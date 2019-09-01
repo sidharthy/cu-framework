@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root name="calculator-output.xml">
+ <calculator id="calculator-output">
+   <using>
+     <valueof id="operation" default="minus"/>
+   </using>
+   <group name="operation">
+     <set attribute="type">
+       <valueof key="operation">
+         <internal-map/>
+       </valueof>
+     </set>
+     <set attribute="first-operand">
+       <valueof key="first">
+         <internal-map/>
+       </valueof>
+     </set>
+     <set attribute="second-operand">
+       <valueof key="second">
+         <internal-map/>
+       </valueof>
+     </set>
+   </group>
+   <set attribute="result" evalIfNull="false">
+     <!--concat(sum, ' ', add, ' ', minus, ' ', subtract, ' ', multiply, ' ', divide, ' ', mod, ' ', output)-->
+     <select id="output">
+       <using>
+         <valueof id="result-map" key="$_$execution-result-map">
+           <internal-map/>
+         </valueof>
+       </using>
+       <conditional expression="1">
+         <valueof key="result-map.sum">
+           <internal-map/>
+         </valueof>
+         <condition id="1" expression=".*">
+           <valueof key="result-map.sum">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </conditional>
+       <conditional expression="1">
+         <valueof key="result-map.add">
+           <internal-map/>
+         </valueof>
+         <condition id="1" expression=".*">
+           <valueof key="result-map.add">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </conditional>
+       <conditional expression="1">
+         <valueof key="result-map.minus">
+           <internal-map/>
+         </valueof>
+         <condition id="1" expression=".*">
+           <valueof key="result-map.minus">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </conditional>
+       <conditional expression="1">
+         <valueof key="result-map.subtract">
+           <internal-map/>
+         </valueof>
+         <condition id="1" expression=".*">
+           <valueof key="result-map.subtract">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </conditional>
+       <conditional expression="1">
+         <valueof key="result-map.multiply">
+           <internal-map/>
+         </valueof>
+         <condition id="1" expression=".*">
+           <valueof key="result-map.multiply">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </conditional>
+       <conditional expression="1">
+         <valueof key="result-map.divide">
+           <internal-map/>
+         </valueof>
+         <condition id="1" expression=".*">
+           <valueof key="result-map.divide">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </conditional>
+       <conditional expression="1">
+         <valueof key="result-map.mod">
+           <internal-map/>
+         </valueof>
+         <condition id="1" expression=".*">
+           <valueof key="result-map.mod">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </conditional>
+       <conditional value="Unknown operation ignored"/>
+       <!--<valueof key="sum">
+         <internal-map context="internal"/>
+       </valueof>
+       <valueof key="add">
+         <internal-map context="internal"/>
+       </valueof>
+       <valueof key="minus">
+         <internal-map context="internal"/>
+       </valueof>
+       <valueof key="subtract">
+         <internal-map context="internal"/>
+       </valueof>
+       <valueof key="multiply">
+         <internal-map context="internal"/>
+       </valueof>
+       <valueof key="divide">
+         <internal-map context="internal"/>
+       </valueof>
+       <valueof key="mod">
+         <internal-map context="internal"/>
+       </valueof>
+       <valueof default="Test"/>-->
+     </select>
+     <!--<valueof key="sum">
+       <internal-map context="internal"/>
+     </valueof>
+     <valueof key="add">
+       <internal-map context="internal"/>
+     </valueof>
+     <valueof key="minus">
+       <internal-map context="internal"/>
+     </valueof>
+     <valueof key="subtract">
+       <internal-map context="internal"/>
+     </valueof>
+     <valueof key="multiply">
+       <internal-map context="internal"/>
+     </valueof>
+     <valueof key="divide">
+       <internal-map context="internal"/>
+     </valueof>
+     <valueof key="mod">
+       <internal-map context="internal"/>
+     </valueof>
+     <valueof default="Test"/>-->
+     <on>
+       <condition expression="success">
+         <valueof key="_$execution-endstate">
+           <internal-map/>
+         </valueof>
+       </condition>
+     </on>
+   </set>
+   <set attribute="error" evalIfNull="false">
+     <!--translate(this, 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')-->
+     <valueof key="_$execution-outcome">
+       <internal-map/>
+     </valueof>
+     <on>
+       <condition expression="failure">
+         <valueof key="_$execution-endstate">
+           <internal-map/>
+         </valueof>
+       </condition>
+     </on>
+   </set>
+ </calculator>
+</root>

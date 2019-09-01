@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root name="math.xml">
+ <calculator id="calculator" xmlns="my_math_namespace">
+   <extends default="../templates/loadprops.xml#loadprops"/>
+   <extends default="../templates/calculator-output.xml#calculator-output"/>
+   <using>
+     <valueof id="operation" key="operation" default="sum">
+       <map name="CONTEXT-MAP"/>
+     </valueof>
+     <valueof id="first" key="first.second" default="1">
+       <map name="CONTEXT-MAP"/>
+     </valueof>
+     <valueof id="second" key="second" default="10">
+       <map name="CONTEXT-MAP"/>
+     </valueof>
+     <valueof id="propMapName" default="CONTEXT-MAP"/>
+   </using>
+   <calculator id="sub-calculator">
+     <extends default="../templates/calculator-output.xml#calculator-output"/>
+     <!-- <using>
+       <valueof id="operation" default="minus"/>
+     </using> -->
+     <using>
+       <valueof id="dynamic-key" default="748"/>
+       <valueof id="computed-map-name" default="computed-attribute-test-map"/>
+     </using>
+     <init>
+       <set attribute="$$dynamic-map-key" in="computed-attribute-test-map" createMapIfMissing="true">
+         <valueof default="computed-test-successful"/>
+         <valueof id="dynamic-map-key" default="748"/>
+       </set>
+     </init>
+     <set attribute="$$super-dynamic">
+       <valueof id="super-dynamic" key="$dynamic-key" default="computed-test-failed">
+         <map name="$computed-map-name"/>
+       </valueof>
+     </set>
+   </calculator>
+   <set attribute="$$dynamic-attribute-name-for-this-set" breakOnFirstValueSet="false">
+     concat('outcome', ', ',  'key1', ', ', 'key2', ', ', 'prop1', ', ', 'prop2', ', ', 'p3')
+     <valueof id="outcome" key="-endstate-" default="Default-MyValue1">
+       <map name="CONTEXT-MAP"/>
+     </valueof>
+     <valueof id="key1" key="KEY1">
+       <map name="CONTEXT-MAP"/>
+     </valueof>
+     <valueof id="key2" key="KEY2">
+       <map name="CONTEXT-MAP"/>
+     </valueof>
+     <valueof id="prop1" key="PROP1">
+       <map name="CONTEXT-MAP"/>
+     </valueof>
+     <valueof id="prop2" key="PROP2">
+       <map name="CONTEXT-MAP"/>
+     </valueof>
+     <valueof id="p3" key="P3">
+       <map name="$propMapName"/>
+     </valueof>
+     <valueof id="dynamic-attribute-name-for-this-set" default="loaded-properties"/>
+   </set>
+   <!-- <set attribute="group-set"> -->
+     <group name="groupInsideSet" selfSerializationPolicy="keyValue" childSerializationPolicy="key" type="list">
+       <set attribute="k1">
+         <valueof default="v1"/>
+       </set>
+       <set attribute="k2">
+         <valueof default="v2"/>
+       </set>
+     </group>
+   <!-- </set> -->
+   <group name="looping-times" type="list">
+     <loop name="endless-loop">
+       <using>
+         <valueof id="start" default="0"/>
+         <!--<valueof id="end" default="10"/>
+         <valueof id="times" default="10"/>--> <!--if not value for end or times is specified then the loop will be an endless loop. In such cases a break condition must be specified.-->
+         <valueof id="index" default="index-alias"/>  <!-- Please note that on renaming the accessor keys always use the renamed string to fetch the related value in the loop body.
+                                                           Sometimes it may so happen that the original accessor key (in this case 'index') also returns the correct value when used
+                                                           inside translation expression. That is because while evaluating the translation expression we traverse the internal context map
+                                                           on all the initialized variables and perform simple string replacements where any word inside the translation expression is simply
+                                                           replaced with the value of the key that matches the word fully. Now taking an example of this case, it may so happen that while
+                                                           iterating over the map we first encounter the key 'index' which will get replaced with 'index-alias' and later when we come
+                                                           across 'index-alias' then it will get replaced with the final evaluated value. Hence in that case using either as the accessor key
+                                                           inside the translation expression will return the correct result. However that cannot be relied upon as next time when we are iterating
+                                                           the internal context map the order of key traversal may reverse in which case the result would be wrong. So to be on a safer side, if
+                                                           renaming accessor keys, always use the renamed key as the accessor inside all evaluable expressions in the loop body. -->
+       </using>
+       <break>
+         <condition expression="true">
+           <valueof>index-alias &gt;= 10</valueof>
+         </condition>
+       </break>
+       <group name="headless" selfSerializationPolicy="value">
+         <!--<on>
+           <condition expression="0">
+             <valueof>index-alias mod 2</valueof>
+           </condition>
+         </on>-->
+         <set attribute="$index-alias">
+           <valueof id="item" default="item">
+             concat('item-', index-alias)
+           </valueof>
+         </set>
+         <set attribute="$$second-set-attribute-name">
+           <valueof id="item" default="item">
+             concat('incremented-item-', index-alias + 1)
+           </valueof>
+           <valueof id="second-set-attribute-name" default="ok">
+             concat('item-', index-alias)
+           </valueof>
+         </set>
+       </group>
+     </loop>
+   </group>
+   <group name="looping-empty-map-unset-test">
+     <init>
+       <!-- First create a copy of context map so that it can be restored later -->
+       <set in="CONTEXT-MAP-COPY" createMapIfMissing="true">
+         <valueof>
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+       </set>
+
+       <!-- Now clear the entire context map so that there would be no elements to iterate -->
+       <unset>
+         <map name="CONTEXT-MAP"/>
+       </unset>
+     </init>
+     <finally>
+       <set in="CONTEXT-MAP">
+         <valueof>
+           <map name="CONTEXT-MAP-COPY"/>
+         </valueof>
+       </set>
+       <unset>
+         <map name="CONTEXT-MAP-COPY"/>
+       </unset>
+     </finally>
+     <loop name="loop-map-items">
+       <using>
+         <valueof id="iterable" default="0">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+       </using>
+       <headless-group>
+         <set attribute="$item-key">
+           <valueof key="item-value">
+             <internal-map/>
+           </valueof>
+         </set>
+       </headless-group>
+     </loop>
+   </group>
+   <group name="looping-context-map">
+     <loop name="loop-map-items">
+       <using>
+         <valueof id="iterable" default="0">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+       </using>
+       <init>
+         <set attribute="size-of-iterable" in="tmp-map" createMapIfMissing="true">
+           <valueof key="iterable[]" default="0">
+             <internal-map/>
+           </valueof>
+         </set>
+       </init>
+       <!-- <break>
+         <condition expression="true">
+           <valueof>index &gt;= 10</valueof>
+         </condition>
+       </break> -->
+       <headless-group name="headless" selfSerializationPolicy="value">
+         <set attribute="$item-key">
+           <valueof key="item-value">
+             <internal-map/>
+           </valueof>
+         </set>
+       </headless-group>
+     </loop>
+     <headless-group>
+       <set attribute="size-of-map">
+         <valueof key="size-of-iterable" default="0">
+           <map name="tmp-map"/>
+         </valueof>
+       </set>
+     </headless-group>
+     <finally>
+       <unset attribute="size-of-iterable">
+         <map name="tmp-map"/>
+       </unset>
+     </finally>
+   </group>
+   <group name="looping-internal-context-map">
+     <loop name="loop-map-items">
+       <using>
+         <valueof id="iterable" default="0">
+           <internal-map/>
+         </valueof>
+       </using>
+       <!-- <break>
+         <condition expression="true">
+           <valueof>index &gt;= 10</valueof>
+         </condition>
+       </break> -->
+       <headless-group name="headless" selfSerializationPolicy="value">
+         <set attribute="$item-key">
+           <valueof key="item-value">
+             <internal-map/>
+           </valueof>
+         </set>
+       </headless-group>
+     </loop>
+   </group>
+   <group name="looping-system-map">
+     <loop name="loop-map-items">
+       <using>
+         <valueof id="iterable" default="0">
+           <map name="SYSTEM-MAP"/>
+         </valueof>
+         <valueof id="item-key" default="item-key-renamed"/> <!-- renaming the access variable name -->
+       </using>
+       <!-- <break>
+         <condition expression="true">
+           <valueof>index &gt;= 10</valueof>
+         </condition>
+       </break> -->
+       <headless-group name="headless" selfSerializationPolicy="value">
+         <set attribute="$item-key-renamed">
+           <valueof key="item-value">
+             <internal-map/>
+           </valueof>
+         </set>
+       </headless-group>
+     </loop>
+   </group>
+   <group name="looping-list">
+     <init>
+       <set attribute="list-items-as-json" in="CONTEXT-MAP" createMapIfMissing="true">
+         <valueof default="{'data':['l1', 'l2', 'l3']}"/>
+       </set>
+       <set attribute="list-items" in="CONTEXT-MAP">
+         <valueof key="data">
+           <json container="CONTEXT-MAP" name="list-items-as-json"/>
+         </valueof>
+       </set>
+     </init>
+     <group name="items" type="list">
+       <loop name="loop-list-items" childSerializationPolicy="value">
+         <using>
+           <valueof id="iterable" key="list-items" default="[]">
+             <map name="CONTEXT-MAP"/>
+           </valueof>
+           <valueof id="item-value" default="new-item-value-accessor"/>  <!-- Please note that on renaming the accessor keys always use the renamed string to fetch the related value in the loop body.
+                                                           Sometimes it may so happen that the original accessor key (in this case 'item-value') also returns the correct value when used
+                                                           inside translation expression. That is because while evaluating the translation expression we traverse the internal context map
+                                                           on all the initialized variables and perform simple string replacements where any word inside the translation expression is simply
+                                                           replaced with the value of the key that matches the word fully. Now taking an example of this case, it may so happen that while
+                                                           iterating over the map we first encounter the key 'item-value' which will get replaced with 'new-item-value-accessor' and later when we come
+                                                           across 'new-item-value-accessor' then it will get replaced with the evaluated value. Hence in that case using either as the accessor key
+                                                           inside the translation expression will return the correct result. However that cannot be relied upon as next time when we are iterating
+                                                           the internal context map the order of key traversal may reverse in which case the result would be wrong. So to be on a safer side, if renaming
+                                                           accessor keys, always use the renamed key as the accessor inside all evaluable expressions in the loop body. -->
+         </using>
+         <finally>
+           <!-- Call to make the list size available outside this looping unit-->
+           <set attribute="list-items-loop-size" in="CONTEXT-MAP" createMapIfMissing="true">
+             <valueof key="iterable-size">
+               <internal-map/>
+             </valueof>
+           </set>
+           <set attribute="size-of-iterable" in="CONTEXT-MAP" createMapIfMissing="true">
+             <valueof key="iterable[]">
+               <internal-map/>
+             </valueof>
+           </set>
+         </finally>
+         <!-- <break>
+           <condition expression="true">
+             <valueof>index &gt;= 10</valueof>
+           </condition>
+         </break> -->
+         <!--<headless-group name="items" childSerializationPolicy="value">-->
+           <set attribute="$item-key">
+             <valueof key="new-item-value-accessor">
+               <internal-map/>
+             </valueof>
+           </set>
+         <!--</headless-group>-->
+       </loop>
+     </group>
+     <headless-group>
+       <set attribute="size">
+         <valueof key="list-items-loop-size">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <on>
+           <condition expression="true">
+             <valueof key="list-items-loop-size">
+               this > 0
+               <map name="CONTEXT-MAP"/>
+             </valueof>
+           </condition>
+         </on>
+       </set>
+       <set attribute="size-of-list-found-using-indexed-lookup">
+         <valueof key="size-of-iterable" default="0">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+       </set>
+     </headless-group>
+     <finally>
+       <!--Unset the list size which was exposed by the loop cu for consumption outside it-->
+       <unset attribute="list-items-loop-size">
+         <map name="CONTEXT-MAP"/>
+       </unset>
+       <unset attribute="size-of-iterable">
+         <map name="CONTEXT-MAP"/>
+       </unset>
+     </finally>
+   </group>
+   <group name="looping-array">
+     <group name="items" type="list">
+       <loop name="loop-array-items" childSerializationPolicy="value">
+         <using>
+           <valueof id="iterable" key="test-array-object" default="[]">
+             <map name="CONTEXT-MAP"/>
+           </valueof>
+         </using>
+         <finally>
+           <!-- Call to make the list size available outside this looping unit-->
+           <set attribute="array-items-loop-size" in="CONTEXT-MAP" createMapIfMissing="true">
+             <valueof key="iterable-size">
+               <internal-map/>
+             </valueof>
+           </set>
+           <set attribute="size-of-iterable" in="CONTEXT-MAP" createMapIfMissing="true">
+             <valueof key="iterable[]">
+               <internal-map/>
+             </valueof>
+           </set>
+         </finally>
+         <!-- <break>
+           <condition expression="true">
+             <valueof>index &gt;= 10</valueof>
+           </condition>
+         </break> -->
+         <!--<headless-group name="items" childSerializationPolicy="value">-->
+           <set attribute="$index">
+             <valueof key="item-value">
+               <internal-map/>
+             </valueof>
+           </set>
+         <!--</headless-group>-->
+       </loop>
+     </group>
+     <headless-group>
+       <set attribute="size">
+         <valueof key="array-items-loop-size">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <on>
+           <condition expression="true">
+             <valueof key="array-items-loop-size">
+               this > 0
+               <map name="CONTEXT-MAP"/>
+             </valueof>
+           </condition>
+         </on>
+       </set>
+       <set attribute="size-of-array-found-using-indexed-lookup">
+         <valueof key="size-of-iterable" default="0">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+       </set>
+     </headless-group>
+     <finally>
+       <!--Unset the list size which was exposed by the loop cu for consumption outside it-->
+       <unset attribute="array-items-loop-size">
+         <map name="CONTEXT-MAP"/>
+       </unset>
+       <unset attribute="size-of-iterable">
+         <map name="CONTEXT-MAP"/>
+       </unset>
+     </finally>
+   </group>
+ </calculator>
+</root>

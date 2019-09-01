@@ -1,0 +1,506 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="mix-tests.xml">
+ <calculator id="-test-" xmlns="my_testing_namespace"
+                                  >  <!-- if pgvif is defined here (irrespective of its value) then the execution of the finally block of this group is -->
+                                                 <!-- guaranteed to happen even if some exception occurs during processing of this group or any of its descendant(s) --> 
+   <extends default="../templates/math.xml#calculator"/>
+   <init>
+     <log id="calculator-test-logger" level="$log-level" target="$logger-target">  <!-- example of dynamically setting log level and target-->
+       <using>
+         <valueof id="log-level" default="info"/>
+         <valueof id="logger-target" default="console"/>
+       </using>
+       <valueof default="Starting execution of calculation tests..."/>
+     </log>
+     <assert id="calculator:operation-should-be-present-in-both-internal-and-context-maps" expression="1 and 2">
+       <condition id="1" expression=".*">
+         <valueof key="operation">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+       </condition>
+       <condition id="2" expression=".*">
+         <valueof key="operation">
+           <internal-map/>
+         </valueof>
+       </condition>
+     </assert>
+     <headless-executable-group id="conditional-assertions">
+       <on>
+         <condition expression="success">
+           <valueof key="_$execution-endstate">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </on>
+       <init>
+         <log id="executing-conditional-assertions-on-success">
+           <valueof default="Starting..."/>
+         </log>
+         <set attribute="is-operation-value-same-in-internal-and-context-maps" in="CONTEXT-MAP" createMapIfMissing="true" breakOnFirstValueSet="false">
+           '1' = '2'
+           <valueof id="1" key="operation">
+             <map name="CONTEXT-MAP"/>
+           </valueof>
+           <valueof id="2" key="operation">
+             <internal-map/>
+           </valueof>
+         </set>
+         <assert id="calculator:operation-value-should-be-same-in-both-internal-and-context-maps" expression="1">
+           <condition id="1" expression="true">
+             <valueof key="is-operation-value-same-in-internal-and-context-maps">
+               <map name="CONTEXT-MAP"/>
+             </valueof>
+           </condition>
+         </assert>
+         <unset attribute="is-operation-value-same-in-internal-and-context-maps">
+           <map name="CONTEXT-MAP"/>
+         </unset>
+         <assert id="calculator:unset-successful_operation-value-should-be-same-in-both-internal-and-context-maps" expression="not(1)">
+           <condition id="1" expression=".*">
+             <valueof key="is-operation-value-same-in-internal-and-context-maps">
+               <map name="CONTEXT-MAP"/>
+             </valueof>
+           </condition>
+         </assert>
+         <log id="executing-conditional-assertions-on-success">
+           <valueof default="Finished."/>
+         </log>
+       </init>
+     </headless-executable-group>
+     <set attribute="pre-processing-num-items-in-internal-map" in="tmp-map" createMapIfMissing="true">
+       <valueof key="[]">
+         <internal-map/>
+       </valueof>
+     </set>
+   </init>
+   <finally>
+     <!-- Playing with logging inside loop -->
+     <loop>
+       <using>
+         <valueof id="times" default="10"/>
+       </using>
+       <headless-group>
+         <init>
+           <assert id="assertion-inside-loop" expression="1">
+             <condition id="1" expression="true">
+               <valueof>index &lt; 10</valueof>
+             </condition>
+           </assert>
+           <log id="test-loop-even-index-logger" level="$log-level">
+             <using>
+               <select id="log-level">
+                 translate('this', 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+                 <conditional expression="1" value="warning">
+                   <condition id="1" expression="true">
+                     <valueof>index = 2</valueof>
+                   </condition>
+                 </conditional>
+                 <conditional expression="1" value="severe">
+                   <condition id="1" expression="true">
+                     <valueof>index = 4</valueof>
+                   </condition>
+                 </conditional>
+                 <conditional expression="1" value="none">
+                   <condition id="1" expression="true">
+                     <valueof>index = 6</valueof>
+                   </condition>
+                 </conditional>
+               </select>
+               <!-- <valueof id="log-level" default="severe">
+                 <on>
+                   <condition expression="true">
+                     <valueof>index = 6</valueof>
+                   </condition>
+                 </on>
+               </valueof> -->
+             </using>
+             <valueof>index</valueof>
+             <on>
+               <condition expression="0">
+                 <valueof>
+                   index mod 2
+                 </valueof>
+               </condition>
+             </on>
+           </log>
+         </init>
+       </headless-group>
+     </loop>
+     <!-- end - logging inside loop -->
+
+     <set attribute="post-processing-num-items-in-internal-map-should-be-same-as-before" in="tmp-map" createMapIfMissing="true" breakOnFirstValueSet="false">
+       v1 = (v2 - 2) <!-- we are doing minus 2 here because, one - the result of calculator-test cu was not available inside the init but is available inside finally
+                          and two - this set unit would have initialized one extra variable of its own (i.e. corresponding to v1) by the time v2 got processed.
+                          If positions of v1 and v2 are interchanged below then by the time inspection of internal-map happened v1 would not have been defined and in
+                          that case we just have to subtract 1 i.e. corresponding to the result object of the calculator-test cu.
+                          Further adjustment of v1 had to be done because breakOnFirstValueSet is set to false for this cu. -->
+       <valueof id="v1" key="pre-processing-num-items-in-internal-map">
+         <map name="tmp-map"/>
+       </valueof>
+       <valueof id="v2" key="[]">
+         <internal-map/>
+       </valueof>
+     </set>
+     <assert id="calculator:no-memory-leaks-inside-internal-map" expression="1">
+       <condition id="1" expression="true">
+         <valueof key="post-processing-num-items-in-internal-map-should-be-same-as-before">
+           <map name="tmp-map"/>
+         </valueof>
+       </condition>
+     </assert>
+     <unset attribute="pre-processing-num-items-in-internal-map">
+       <map name="tmp-map"/>
+     </unset>
+     <unset attribute="post-processing-num-items-in-internal-map-should-be-same-as-before">
+       <map name="tmp-map"/>
+     </unset>
+     <log id="logging-assertion-results"> <!-- demonstrating logging of assertion results -->
+       <assert id="calculator:check-operation" expression="1">
+         concat('Test passed = ', 'this')  <!-- instead of just true, returning a more verbose string -->
+         <condition id="1" expression=".*">
+           <valueof key="operation">
+             <map name="CONTEXT-MAP"/>
+           </valueof>
+         </condition>
+       </assert>
+       <assert id="load-properties:check-properties-loaded-successfully" expression="1 and 2 and 3 and 4 and 5">
+         <condition id="1" expression="MyValue1">
+           <valueof key="KEY1">
+             <map name="CONTEXT-MAP"/>
+           </valueof>
+         </condition>
+         <condition id="2" expression="MyValue2">
+           <valueof key="KEY2">
+             <map name="CONTEXT-MAP"/>
+           </valueof>
+         </condition>
+         <condition id="3" expression="V1">
+           <valueof key="PROP1">
+             <map name="CONTEXT-MAP"/>
+           </valueof>
+         </condition>
+         <condition id="4" expression="V2">
+           <valueof key="PROP2">
+             <map name="CONTEXT-MAP"/>
+           </valueof>
+         </condition>
+         <condition id="5" expression="V3">
+           <valueof key="P3">
+             <map name="CONTEXT-MAP"/>
+           </valueof>
+         </condition>
+       </assert>
+     </log>
+     <log id="calculator-test-logger" target="$logger-target">
+       <using>
+         <valueof id="logger-target" default="console"/>
+       </using>
+       <valueof default="Completed execution of calculation tests."/>
+     </log>
+   </finally>
+   <calculator id="sub-calculator">
+     <init>
+       <assert id="sub-calculator:operation-should-be-minus" expression="1">
+         <condition id="1" expression="minus">
+           <valueof key="operation">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </assert>
+     </init>
+     <finally>
+       <!-- Just checking logging -->
+       <log id="final-value-of-sub-calculator-test-cu">
+         <valueof id="1" key="-sub-calculator-value">
+           <internal-map/>
+         </valueof>
+       </log>
+       <!-- end - logging check -->
+
+       <assert id="sub-calculator:successfully-initialized-dynamic-key" expression="1">
+         <condition id="1" expression="computed-test-successful">
+           <valueof key="748">
+             <map name="computed-attribute-test-map"/>
+           </valueof>
+         </condition>
+       </assert>
+       <set attribute="this-value" in="this-value-tmp-map" createMapIfMissing="true">
+         <valueof key="-sub-calculator-value">
+           concat('{', "this", '}')
+           <internal-map/>
+         </valueof>
+       </set>
+       <assert id="sub-calculator:check-key-in-this-result" expression="1">
+         <condition id="1" expression="computed-test-successful">
+           <valueof key="sub-calculator.computed-test-successful">
+             <json container="this-value-tmp-map" name="this-value"/>
+           </valueof>
+         </condition>
+       </assert>
+       <unset attribute="this-value">
+         <map name="this-value-tmp-map"/>
+       </unset>
+       <assert id="sub-calculator:this-value-successfully-unset" expression="not(1)">
+         <condition id="1" expression=".*">
+           <valueof key="this-value">
+             <map name="this-value-tmp-map"/>
+           </valueof>
+         </condition>
+       </assert>
+     </finally>
+   </calculator>
+   <group name="looping-context-map">
+     <loop name="loop-map-items">
+       <init>
+         <assert id="comtext-map-loop:iterable-should-be-present-inside-internal-context" expression="1">
+           <condition id="1" expression=".*">
+             <valueof key="iterable">
+               <internal-map/>
+             </valueof>
+           </condition>
+         </assert>
+         <!--<assert id="comtext-map-loop:map-size-should-be-present-inside-internal-context" expression="1">
+           <condition id="1" expression=".*">
+             <valueof key="iterable-size">
+               <internal-map/>
+             </valueof>
+           </condition>
+         </assert>-->
+       </init>
+       <finally>
+         <assert id="comtext-map-loop:map-size-should-be-present-inside-internal-context" expression="1">
+           <condition id="1" expression=".*">
+             <valueof key="iterable-size">
+               <internal-map/>
+             </valueof>
+           </condition>
+         </assert>
+         <assert id="comtext-map-loop:item-key-should-not-be-present-inside-internal-context" expression="not(1)">
+           <condition id="1" expression=".*">
+             <valueof key="item-key">
+               <internal-map/>
+             </valueof>
+           </condition>
+         </assert>
+         <assert id="comtext-map-loop:item-value-should-not-be-present-inside-internal-context" expression="not(1)">
+           <condition id="1" expression=".*">
+             <valueof key="item-value">
+               <internal-map/>
+             </valueof>
+           </condition>
+         </assert>
+       </finally>
+     </loop>
+     <finally>
+       <assert id="comtext-map:iterable-should-be-null-by-now-inside-internal-context" expression="not(1)">
+         <condition id="1" expression=".*">
+           <valueof key="iterable">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </assert>
+     </finally>
+   </group>
+   <group name="looping-internal-context-map">
+     <finally>
+       <assert id="internal-context-map:iterable-should-be-null-by-now-inside-internal-context" expression="not(1)">
+         <condition id="1" expression=".*">
+           <valueof key="iterable">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </assert>
+     </finally>
+   </group>
+   <group name="looping-system-map">
+     <finally>
+       <assert id="system-map:iterable-should-be-null-by-now-inside-internal-context" expression="not(1)">
+         <condition id="1" expression=".*">
+           <valueof key="iterable">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </assert>
+     </finally>
+   </group>
+   <group name="looping-list">
+     <finally>
+       <assert id="list:iterable-should-be-null-by-now-inside-internal-context" expression="not(1)">
+         <condition id="1" expression=".*">
+           <valueof key="iterable">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </assert>
+     </finally>
+   </group>
+   <group name="looping-array">
+     <finally>
+       <assert id="list:iterable-should-be-null-by-now-inside-internal-context" expression="not(1)">
+         <condition id="1" expression=".*">
+           <valueof key="iterable">
+             <internal-map/>
+           </valueof>
+         </condition>
+       </assert>
+     </finally>
+   </group>
+ </calculator>
+
+ <!-- Define the test data -->
+ <headless-group id="-test-data-">
+    <headless-group id="1">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='operation=sum;json-obj={"first":{"second":30}};second=4;logger=console'/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+    <headless-group id="2">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='operation=add;json-obj={"first":{"second":30}};second=4;logger=console'/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="2" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+    <headless-group id="3">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='operation=minus;json-obj={"first":{"second":30}};second=4;logger=console'/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="3" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+    <headless-group id="4">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='operation=subtract;json-obj={"first":{"second":30}};second=4;logger=console'/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="4" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+    <headless-group id="5">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='operation=multiply;json-obj={"first":{"second":30}};second=4;logger=console'/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="5" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+    <headless-group id="6">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='operation=divide;json-obj={"first":{"second":30}};second=4;logger=console'/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="6" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+    <headless-group id="7">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='operation=mod;json-obj={"first":{"second":30}};second=4;logger=console'/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="7" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+    <headless-group id="8">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='operation=divide;json-obj={"first":{"second":30}};second=0;logger=console'/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="8" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+    <headless-group id="9">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='operation=mod;json-obj={"first":{"second":30}};second=0;logger=console'/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="9" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+ </headless-group>
+</root>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root name="loadprops.xml">
+ <group id="loadprops">
+   <init id="init">
+     <!--<set attribute="PROPERTIES-MAP" in="PROPERTIES-MAP" createMapIfMissing="true">-->
+     <load-properties id="props">
+       <using>
+         <valueof id="src" default="src/test/resources/files/sample-props"/>
+         <valueof id="stream" default="KEY1=MyValue1,KEY2=MyValue2"/>
+         <valueof id="stream-delimiter" default=","/>
+       </using>
+       <init>
+         <set in="CONTEXT-MAP" createMapIfMissing="true" override="false">
+           <valueof key="$_$execution-result-map">
+             <internal-map/>
+           </valueof>
+         </set>
+         <set attribute="-endstate-" in="CONTEXT-MAP">
+           <valueof key="_$execution-endstate">
+             <internal-map/>
+           </valueof>
+         </set>
+         <set attribute="-outcome-" in="CONTEXT-MAP">
+           <valueof key="_$execution-outcome" default="abc">
+             <internal-map/>
+           </valueof>
+         </set>
+       </init>
+     </load-properties>
+     <!--</set>-->
+   </init>
+ </group>
+</root>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="summation.xml">
+  <group id="summation">
+    <init>
+      <set attribute="list-items-as-json" in="CONTEXT-MAP" createMapIfMissing="true">
+        <valueof default="{'data':['1', '2', '3', '4', '5', '6']}"/>
+        <on>
+          <conditional expression="not(1)">
+            <condition id="1" expression=".*">
+              <valueof key="list-items-as-json">
+                <map name="CONTEXT-MAP"/>
+              </valueof>>
+            </condition>
+          </conditional>
+        </on>
+      </set>
+      <set attribute="list-items" in="CONTEXT-MAP">
+        <valueof key="data">
+          <json container="CONTEXT-MAP" name="list-items-as-json"/>
+        </valueof>
+      </set>
+    </init>
+    <loop>
+      <using>
+        <valueof id="iterable" key="list-items">
+          <map name="CONTEXT-MAP"/>
+        </valueof>
+        <!-- <valueof id="sum" default="0"/> -->
+      </using>
+      <headless-group>
+        <init>
+          <set attribute="sum" in="CONTEXT-MAP" breakOnFirstValueSet="false">
+            sum + item-value
+            <valueof id="sum" key="sum" default="0">
+              <map name="CONTEXT-MAP"/>
+            </valueof>
+          </set>
+        </init>
+      </headless-group>
+    </loop>
+    <headless-group>
+    <set attribute="result">
+      <valueof key="sum">
+        <map name="CONTEXT-MAP"/>
+      </valueof>
+    </set>
+    </headless-group>
+  </group>
+</root>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="summation-test.xml">
+  <group id="-test-">
+    <extends default="../templates/summation.xml#summation"/>
+    <finally>
+      <log id="begin-test-msg">
+        <valueof default="Starting summation tests..."/>
+      </log>
+      <set attribute="this-value" in="tmp-map" createMapIfMissing="true">
+        <valueof key="--test--value">
+          concat('{', "this", '}')
+          <internal-map/>
+        </valueof>
+      </set>
+      <set attribute="is-summation-result-equal" in="tmp-map" createMapIfMissing="true" breakOnFirstValueSet="false">
+        '1' = '2'
+        <valueof id="1" key="-test-.result">
+          <json container="tmp-map" name="this-value"/>
+        </valueof>
+        <valueof id="2" key="result">
+          <map name="CONTEXT-MAP"/>
+        </valueof>
+      </set>
+      <assert id="summation-result-is-correct" expression="1">
+        <condition id="1" expression="true">
+          <valueof key="is-summation-result-equal">
+            <map name="tmp-map"/>
+          </valueof>
+        </condition>
+      </assert>
+      <unset>
+        <map name="tmp-map"/>
+      </unset>
+      <log id="end-test-msg">
+        <valueof default="Finished summation tests."/>
+      </log>
+    </finally>
+  </group>
+  <headless-group id="-test-data-">
+    <headless-group id="1">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default="list-items-as-json={'data':[1,2,3,4,5,6]}"/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+        <load-properties id="output">
+          <using>
+            <valueof id="stream" default="result=21"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+    <headless-group id="2">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default="list-items-as-json={'data':[0,1,2,3,4,5,6,30]}"/>
+            <valueof id="stream-delimiter" default=";"/>
+          </using>
+          <init>
+            <set attribute="2" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+        <load-properties id="output">
+          <using>
+            <valueof id="stream" default="result=51"/>
+          </using>
+          <init>
+            <set attribute="2" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+  </headless-group>
+</root>
