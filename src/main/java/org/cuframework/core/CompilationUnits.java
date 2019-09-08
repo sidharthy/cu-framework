@@ -234,7 +234,7 @@ public final class CompilationUnits {
         /**
             This method computes the attribute value using the following scheme:
             1. If the attribute value starts with special characters that makes it eligible for computation then an attempt
-               to resolve the computed value is madei, and, on success, the computed value is returned.
+               to resolve the computed value is made, and, on success, the computed value is returned.
             2. If the attribute value either doesn't start with special characters that makes it eligible for computation or
                if the computation didn't successfully resolve to a value then the passed attribute value gets returned as is.
          */
@@ -251,7 +251,11 @@ public final class CompilationUnits {
                                                          String referencedChildId = attributeValue.substring(2);
                                                          ICompilationUnit childCU = getChild(referencedChildId);
                                                          if (childCU instanceof IEvaluable) {
-                                                             attributeValue = (String) ((IEvaluable) childCU).getValue(compilationRuntimeContext);
+                                                             //attributeValue = (String) ((IEvaluable) childCU).getValue(compilationRuntimeContext);
+                                                             Object _value = ((IEvaluable) childCU).getValue(compilationRuntimeContext);
+                                                             if (_value != null) {
+                                                                 attributeValue = _value.toString();
+                                                             }
                                                          }
                                                      }
                                                      break;
@@ -3670,8 +3674,8 @@ public final class CompilationUnits {
                 }
 
                 Object iterable = requestContext.get("iterable");
-                String iterableType = (String) requestContext.get("iterable-type");  //iterable might be string representation
-                                                                                 //of object like json, properties etc.
+                //String iterableType = (String) requestContext.get("iterable-type");  //iterable might be string representation
+                                                                                     //of object like json, properties etc.
                 Object value = "";
                 super.doInit(compilationRuntimeContext);  //call the initializer directly using super
 

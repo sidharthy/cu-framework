@@ -160,6 +160,10 @@ public final class CompiledTemplatesRegistry {
         return mct;
     }
 
+    public CompiledTemplate removeCompiledTemplate(String templateUID) {
+        return compiledTemplatesCache.remove(templateUID);
+    }
+
     public CompiledTemplate processExtensions(String forTemplate,
                                         CompilationRuntimeContext compilationRuntimeContext) {
         CompiledTemplate processed = null;
