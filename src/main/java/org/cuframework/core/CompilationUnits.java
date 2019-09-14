@@ -1188,11 +1188,21 @@ public final class CompilationUnits {
             if (extractionExpr == null) {
                 return value;  //no extraction expression specified. Return the value as is.
             }
-            int matcherGroup = Integer.parseInt(getAttribute(ATTRIBUTE_MATCHER_GROUP));  //let it throw number format
+            int matcherGroup = -1;
+            if (getAttribute(ATTRIBUTE_MATCHER_GROUP) != null) {
+                matcherGroup = Integer.parseInt(getAttribute(ATTRIBUTE_MATCHER_GROUP));  //let it throw number format
                                                                                          //exception if no valid int
                                                                                          //value is specified.
-            Matcher matcher = Pattern.compile(extractionExpr).matcher(value.toString());
-            return matcher.find() ? matcher.group(matcherGroup) : null;
+            }
+            if (matcherGroup >= 0) {
+                //compile the extraction expression and return the requested matcher group
+                Matcher matcher = Pattern.compile(extractionExpr).matcher(value.toString());
+                return matcher.find() ? matcher.group(matcherGroup) : null;
+            } else {
+                //the request is not to return any specific matcher group but to use the
+                //extraction expression to split the input value into an array of tokens.
+                return Pattern.compile(extractionExpr).split(value.toString());
+            }
         }
 
         @Override
