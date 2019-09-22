@@ -74,6 +74,7 @@ public final class CompilationUnits {
         coreCUs.put(Conditional.TAG_NAME, Conditional.class);
         coreCUs.put(Condition.TAG_NAME, Condition.class);
         coreCUs.put(ValueOf.TAG_NAME, ValueOf.class);
+        coreCUs.put(TypeOf.TAG_NAME, TypeOf.class);
         coreCUs.put(Map.TAG_NAME, Map.class);
         coreCUs.put(InternalMap.TAG_NAME, InternalMap.class);
         coreCUs.put(Json.TAG_NAME, Json.class);
@@ -1219,6 +1220,100 @@ public final class CompilationUnits {
                 //extraction expression to split the input value into an array of tokens.
                 return Pattern.compile(extractionExpr).split(value.toString());
             }
+        }
+
+        @Override
+        protected Object getDefaultValue() {
+            return getAttribute(ATTRIBUTE_DEFAULT_VALUE);
+        }
+    }
+
+    //returns the java class type of value object returned by the enclosed evaluable child cu.
+    public static class TypeOf extends EvaluableCompilationUnit implements IEvaluable {
+        public static final String TAG_NAME = "typeof";
+
+        private static final String ATTRIBUTE_DEFAULT_VALUE = "default";
+        private static final String[] ATTRIBUTES = {ATTRIBUTE_DEFAULT_VALUE};
+
+        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[] {On.TAG_NAME});
+
+        private IEvaluable evaluable = null;
+        private On on = null;
+
+        @Override
+        protected void doCompileAttributes(Node n) throws XPathExpressionException {
+            super.doCompileAttributes(n);
+
+            // compile all the attributes
+            for (String attribute : ATTRIBUTES) {
+                setAttribute(
+                        attribute,
+                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
+            }
+        }
+
+        @Override
+        protected void doCompileChildren(Node n) throws XPathExpressionException {
+            super.doCompileChildren(n);
+        }
+
+        @Override
+        protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
+            if ((cu instanceof IEvaluable) && (evaluable == null)) {
+                //we need just one evaluable cu and in case of many defined, let's just retain the first instance that we got.
+                evaluable = (IEvaluable) cu;
+            }
+            if ((cu instanceof On) && (on == null)) {
+                //we need just one ‘on’ cu and in case of many defined, let's just retain the first instance that we got.
+                on = (On) cu;
+            }
+        }
+
+        @Override
+        protected boolean isChildTagRecognized(String tagName) {
+            return RECOGNIZED_CHILD_TAGS.contains(tagName) ||
+                   CompilationUnits.isAssignableFrom(IEvaluable.class, CompilationUnits.getCompilationClassForTag(tagName));
+        }
+
+        @Override
+        public ICompilationUnit getChild(String idOrElseOfChild) {
+            if (idOrElseOfChild == null) {
+                return null;
+            }
+            if (evaluable != null && idOrElseOfChild.equals(evaluable.getIdOrElse())) {
+                return evaluable;
+            }
+            if (on != null && idOrElseOfChild.equals(on.getIdOrElse())) {
+                return on;
+            }
+            return null;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T extends ICompilationUnit> T[] getChildren(Class<T> type) {
+            IEvaluable[] evaluableArray = getElementAsUnitArray(evaluable, type);
+            if (evaluableArray != null) {
+                return (T[]) evaluableArray;
+            }
+            On[] onArray = getElementAsUnitArray(on, type);
+            return (T[]) (onArray == null ? getZeroLengthArrayOfType(type) : onArray);
+        }
+
+        @Override
+        protected boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
+                                                                     throws XPathExpressionException {
+            return on == null || on.satisfies(compilationRuntimeContext);
+        }
+
+        @Override
+        protected Object doGetValue(CompilationRuntimeContext compilationRuntimeContext)
+                                                                    throws XPathExpressionException {
+            Object value = null;
+            if (evaluable != null) {
+                value = evaluable.getValue(compilationRuntimeContext);
+            }
+            return value != null? value.getClass().getName(): value;
         }
 
         @Override
