@@ -8,6 +8,7 @@ The following compilation units can be categorized as first class units that log
 
 * [ValueOf](#valueof)
 * [Get](#valueof)
+* [TypeOf](#typeof)
 * [Set](#set)
 * [Unset](#unset)
 * [Select](#select)
@@ -52,7 +53,26 @@ The following compilation units are meaningful only when used inside their paren
     ```
     _Note: 'get' is an alias tag of 'valueof' and can simply replace the later in the above cu snippet._
 
-2. <a id="set"></a>**set**
+2. <a id="typeof"></a>**typeof**
+
+    _Java code_
+    ```Java
+    java.util.Map<String, java.util.Map<String, Object>> mapOfMaps = new java.util.HashMap<>();
+    mapOfMaps.put("CONTEXT-MAP", new java.util.HashMap<String, Object>());  //code to add key-value pair of 'abc' inside CONTEXT-MAP is deliberately skipped
+    Object id1 = mapOfMaps.get("CONTEXT-MAP").get("abc");
+    return id1.getClass().getName();  //if id1 represented a String value object then java.lang.String would be returned.
+    ```
+    _cu equivalent_
+    ```
+    <typeof>
+      <valueof id="id1" key="abc">
+        <map name="CONTEXT-MAP"/>
+      </valueof>
+    </typeof>
+    <!-- the above would return 'java.lang.String' assuming 'id1' evaluated to a String value object.
+    ```
+
+3. <a id="set"></a>**set**
 
     _Scenario 1 Java code_
     ```Java
@@ -78,7 +98,7 @@ The following compilation units are meaningful only when used inside their paren
     </set>
     ```
 
-3. <a id="unset"></a>**unset**
+4. <a id="unset"></a>**unset**
 
     _Scenarion 1 Java Code_
     ```Java
@@ -118,7 +138,7 @@ The following compilation units are meaningful only when used inside their paren
     </unset>
     ```
 
-4. <a id="select"></a>**select**
+5. <a id="select"></a>**select**
 
     _Java Code_
     ```Java
@@ -160,7 +180,7 @@ The following compilation units are meaningful only when used inside their paren
     </select>
     ```
 
-5. <a id="group"></a>**group**
+6. <a id="group"></a>**group**
 
     _Java Code_
     ```Java
@@ -183,7 +203,7 @@ The following compilation units are meaningful only when used inside their paren
     ```
     _Note: group can have any number of sub groups and set units inside it. Also nesting upto nth level is supported._
 
-6. <a id="headless-group"></a>**headless-group**
+7. <a id="headless-group"></a>**headless-group**
 
     _Java Code_
     ```Java
@@ -206,7 +226,7 @@ The following compilation units are meaningful only when used inside their paren
     ```
     _Note: headless-group is also a type of group._
 
-7. <a id="executable-group"></a>**executable-group**
+8. <a id="executable-group"></a>**executable-group**
 
     executable-group is also a type of group - the only difference being how it gets processed at runtime. Conceptually a group is evaluable but an executable group is evaluable as well as executable. In Java terms what this means is that the group implements an IEvaluable interface but an executable group implements both IEvaluable and IExecutable interfaces. For detailed documentation refer the link _TBD_
 
@@ -219,7 +239,7 @@ The following compilation units are meaningful only when used inside their paren
     Same as that provided for group earlier with the difference that in place of 'group' the tag to use would be 'executable-group' (quotes excluded).
     ```
 
-8. <a id="headless-executable-group"></a>**headless-executable-group**
+9. <a id="headless-executable-group"></a>**headless-executable-group**
 
     headless-executable-group is also a type of group - the only difference being how it gets processed at runtime. Conceptually a group is evaluable but an executable group is evaluable as well as executable. In Java terms what this means is that the group implements an IEvaluable interface but an executable group implements both IEvaluable and IExecutable interfaces. For detailed documentation refer the link _TBD_
 
@@ -232,7 +252,7 @@ The following compilation units are meaningful only when used inside their paren
     Same as that provided for headless-group earlier with the difference that in place of 'headless-group' the tag to use would be 'headless-executable-group' (quotes excluded).
     ```
 
-9. <a id="condition"></a>**condition**
+10. <a id="condition"></a>**condition**
 
     A condition cu would evaluate to either true or false. The evaluation would be done by matching a value against a regular expression. If no expression is specified then the condition would evaluate to true. A condition cu can be used inside an 'on' or 'conditional' cu.
 
@@ -250,7 +270,7 @@ The following compilation units are meaningful only when used inside their paren
     </condition>
     ```
 
-10. <a id="conditional"></a>**conditional**
+11. <a id="conditional"></a>**conditional**
 
     A conditional cu would evaluate to either true or false and can also return a value if the condition is satisfied. Also it can logically collate the boolean outcome of one or more condition(s) (using and, or, not) to arrive at a final true or false value. If no collating expression is specified then the conditional would evaluate to true. A conditional cu can be used inside an 'on', 'select', 'extends' or 'break' cu.
 
@@ -279,7 +299,7 @@ The following compilation units are meaningful only when used inside their paren
     </condition>
     ```
 
-11. <a id="loop"></a>**loop**
+12. <a id="loop"></a>**loop**
 
     A loop cu can be used to implement unbounded loops (endless loops breaking on specific condition(s)), bounded loops (fixed number of times) and iterables (arrays, collections, maps).
 
@@ -489,7 +509,7 @@ The following compilation units are meaningful only when used inside their paren
     </headless-group>
     ```
     
-12. <a id="log"></a>**log**
+13. <a id="log"></a>**log**
 
     A log cu can be used to log messages to console, file or socket.
 
@@ -504,7 +524,7 @@ The following compilation units are meaningful only when used inside their paren
     </log>
     ```
     
-13. <a id="assert"></a>**assert**
+14. <a id="assert"></a>**assert**
 
     An assert cu can be used to assert values inside cunit tests. Cunit testing framework is a revolutionary new way of writing pure data driven tests.
     
@@ -528,7 +548,7 @@ The following compilation units are meaningful only when used inside their paren
     </assert>
     ```
     
-14. <a id="load-properties"></a>**load-properties**
+15. <a id="load-properties"></a>**load-properties**
 
     Since the Compilation Units Framework extensively use properties map, the 'load-properties' cu is a convenience cu that loads and initializes properties map for consumption by other compilation units (group, condition, conditional, set etc.). It can load properties from a file and also from an in-memory stream.
 
@@ -569,7 +589,7 @@ The following compilation units are meaningful only when used inside their paren
     </load-properties>
     ```
     
-15. <a id="using"></a>**using**
+16. <a id="using"></a>**using**
 
     A 'using' cu initializes variables for use within the scope of its parent cus. The initialized variables are disposed off when the control comes out of the scope of the parent cu. The parent cus that can contain a 'using' cu are 'select', 'executable-group', 'headless-executable-group', 'loop' and 'log'. Further, any custom tags defined in future are also free to use 'using' in their implementation. As for the cus that can be added as child of the 'using' cu - any tag which is of type _org.cuframework.core.CompilationUnits.IEvaluable_ can be added as its child. Some examples of tags which are of type IEvaluable and can be added as child of 'using' cu are 'valueof', 'get', 'select', 'group', 'headless-group', 'executable-group', 'headless-executable-group' and 'conditional'. 'valueof' is the most frequently used tag inside using.
     
@@ -588,7 +608,7 @@ The following compilation units are meaningful only when used inside their paren
     </loop>
     ```
     
-16. <a id="init"></a>**init**
+17. <a id="init"></a>**init**
 
     An 'init' cu can be used to perform initialization tasks for its parent cus i.e. group, headless-group, executable-group and headless-executable-group before the body gets executed. It can contain tags (cus) which are of type _org.cuframework.core.CompilationUnits.IExecutable_. Some examples of tags which are of type IExecutable and can be added as child of 'init' cu are 'executable-group', 'headless-executable-group', 'loop', 'log', 'assert' and 'load-properties'.
     
@@ -618,7 +638,7 @@ The following compilation units are meaningful only when used inside their paren
     </group>
     ```
     
-17. <a id="finally"></a>**finally**
+18. <a id="finally"></a>**finally**
 
     A 'finally' cu can be used to perform finalization tasks for its parent cus i.e. group, headless-group, executable-group and headless-executable-group after the body has executed. It can contain tags (cus) which are of type _org.cuframework.core.CompilationUnits.IExecutable_. Some examples of tags which are of type IExecutable and can be added as child of 'finally' cu are 'executable-group', 'headless-executable-group', 'loop', 'log', 'assert' and 'load-properties'.
     
@@ -638,7 +658,7 @@ The following compilation units are meaningful only when used inside their paren
     </group>
     ```
     
-18. <a id="extends"></a>**extends**
+19. <a id="extends"></a>**extends**
 
     The 'extends' cu is the hallmark of inheritance support inside the Compulation Units Framework. Any extensible CU can use it to inherit functionality from a base cu of the same type. The framework supports static inheritance as well as conditional inheritance. Also inheritance from multiple sources is supported. Merge as well as Replace strategies are supported. Examples of extensible cus available made available by the framework are group cus (i.e. group, headless-group, extensible-group, headless-extensible-group). New extensible units can also be created by implementing _org.cuframework.core.CompilationUnits.IExtensible_ interface or by extending the _org.cuframework.core.CompilationUnits.ExtensibleCompilationUnit_ class.
     
@@ -693,7 +713,7 @@ The following compilation units are meaningful only when used inside their paren
     </group>
     ```
     
-19. <a id="break"></a>**break**
+20. <a id="break"></a>**break**
 
     The 'break' cu is used to break out of the loop iteration based on specific condition(s). It can have 'condition' and 'conditional' cus as it's children. It can be added as a child only of the 'loop' cu. Added elsewhere would simply be ignored.
     
@@ -720,7 +740,7 @@ The following compilation units are meaningful only when used inside their paren
     </loop>
     ```
     
-20. <a id="on"></a>**on**
+21. <a id="on"></a>**on**
 
     The 'on' cu is used to control execution of a cu basis satisfaction of specific condition(s). If 'on' evaluates to true then the processing of the parent cu would take place, else skipped. 'on' can be added as a child of 'valueof', 'get', 'set', 'unset', 'group', 'headless-group', executable-group', 'headless-executale-group', 'map', 'internal-map', 'json', 'log' and 'load-properties' cus and control their execution. 'on' can contain 'condition' and 'conditional' cus as it's children.
     
@@ -749,7 +769,7 @@ The following compilation units are meaningful only when used inside their paren
     //execution of the above headless-group would return the json {'message': 'Found boolean dataType'} if the variable dataType holds the string 'boolean'. Else execution would just result in an empty string.
     ```
     
-21. <a id="map"></a>**map | internal-map**
+22. <a id="map"></a>**map | internal-map**
 
     The 'map' cu is used to perform key-value lookups inside a specified map. Also it supports removal of existing key-value pairs from inside the specified map. It can be contained inside the 'valueof' and 'get' cus as their child. It can have 'on' cu as its own child. The 'internal-map' cu is also a type of map which holds the internal execution state of the cu being processed (including its scoped variables).
     
@@ -783,7 +803,7 @@ The following compilation units are meaningful only when used inside their paren
     </value>
     ```
     
-21. <a id="json"></a>**json**
+23. <a id="json"></a>**json**
 
     The 'json' cu is used to return attribute values from inside a json structure. If no attribute/key is specified it would convert the json into a Map representation and returns the entire map. Nested attributes can be accessed by using a field delimiter like dot(.) when specifying the attribute key. For example 'a.b.c' would return 'c-value' from inside the following json structure "{a: {b: {c: 'c-value'}}}". 'json' cu can be contained inside the 'valueof' and 'get' cus as their child. It can have 'on' cu as its own child.
     
