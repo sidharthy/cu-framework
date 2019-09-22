@@ -166,6 +166,8 @@ public final class CompilationUnits {
     private static final XPath XPATH = getXPath();
 
     public interface ICompilationUnit {
+        static final String ATTRIBUTE_ID = "id";
+
         String getAttribute(String key);
         String getId();
         String getIdOrElse();
@@ -187,7 +189,7 @@ public final class CompilationUnits {
         }
 
         //define the attributes available for all compilation units.
-        private static final String ATTRIBUTE_ID = "id";
+        //private static final String ATTRIBUTE_ID = "id";
         private static final String[] ATTRIBUTES = {ATTRIBUTE_ID};
 
         private static final String IMPLICIT_ATTRIBUTE_NAMESPACE_URI = "--[namespace-uri]--";
@@ -214,6 +216,12 @@ public final class CompilationUnits {
 
         void setAttribute(String key, String value) {
             if (key != null && value != null) {
+                attributes.setProperty(key, value);
+            }
+        }
+
+        void setAttributeIffNew(String key, String value) {
+            if (key != null && value != null && !attributes.containsKey(key)) {
                 attributes.setProperty(key, value);
             }
         }
@@ -453,6 +461,11 @@ public final class CompilationUnits {
      *
      */
     public abstract static class EvaluableCompilationUnit extends CompilationUnit implements IEvaluable {
+        private static final String SKIP_EVALUATION = "EVAL.NONE";  //if the text node value equals this string then no xpath evaluations would be performed
+                                                                    //over the value of this cu. Explicit skipping of evaluations would come handy in cases
+                                                                    //where the base cu has defined some transformation expressions but the super unit doesn't
+                                                                    //want to execute any by virtue to inheritance.
+
         private static final String TEXT_NODE_XPATH = "text()[1]";
         private static final String ATTRIBUTE_EVAL_IF_NULL = "evalIfNull";
         private static final String ATTRIBUTE_PGVIF = "pgvif";  //call 'postGetValue inside finally'. If this attribute is defined (irrespective of its value)
@@ -482,7 +495,7 @@ public final class CompilationUnits {
                     ATTRIBUTE_PGVIF,
                     getAttributeValueIffAttributeIsDefined("@" + ATTRIBUTE_PGVIF, n));
             String textNodePathAsStr = getAttributeValueIffAttributeIsDefined(TEXT_NODE_XPATH, n);
-            if (textNodePathAsStr != null) {
+            if (textNodePathAsStr != null && !"".equals(textNodePathAsStr.trim())) {
                 setAttribute(TEXT_NODE_XPATH, textNodePathAsStr.trim());
             }
 
@@ -643,7 +656,8 @@ public final class CompilationUnits {
         protected Object getEvaluatedValue(CompilationRuntimeContext compilationRuntimeContext,
                                                         Object thisValue) throws XPathExpressionException {
             String nodeTextExpression = getAttribute(TEXT_NODE_XPATH);
-            if (nodeTextExpression == null || "".equals(nodeTextExpression.trim())) {
+            if (nodeTextExpression == null || "".equals(nodeTextExpression.trim())
+                                           || SKIP_EVALUATION.equals(nodeTextExpression.trim())) {
                 return thisValue;
             }
 
@@ -656,9 +670,9 @@ public final class CompilationUnits {
             //thisValue with single quotes would be done as that causes problems in case the value itself contains
             //single quotes. If the value needs to be enclosed with single quotes or double quotes then do so at
             //the source itself i.e. at the time of defining the expression inside the xml.
-            nodeTextExpression = nodeTextExpression.replaceAll("\\bthis\\b", "" + thisValue);  //update any
-                                                                                               //references
-                                                                                               //to 'this'
+            nodeTextExpression = nodeTextExpression.replaceAll("\\bthis\\b", Matcher.quoteReplacement("" + thisValue));  //update any
+                                                                                                                         //references
+                                                                                                                         //to 'this'
             if (declaredVariables != null) {
                 for (Entry<String, Object> entry : declaredVariables.entrySet()) {
                     String key = entry.getKey();
@@ -670,10 +684,11 @@ public final class CompilationUnits {
                         //thisValue with single quotes would be done as that causes problems in case the value itself contains
                         //single quotes. If the value needs to be enclosed with single quotes or double quotes then do so at
                         //the source itself i.e. at the time of defining the expression inside the xml.
-                        nodeTextExpression = nodeTextExpression.replaceAll("\\b" + key + "\\b", "" + value);
+                        nodeTextExpression = nodeTextExpression.replaceAll("\\b" + key + "\\b", Matcher.quoteReplacement("" + value));
                     }
                 }
             }
+            //TODO change evaluation scheme to one using XPathVariableResolver.
             return CompilationUnits.XPATH.evaluate(
                                   nodeTextExpression, getNodeContext(), XPathConstants.STRING);
         }
@@ -893,7 +908,8 @@ public final class CompilationUnits {
 
         @Override
         protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName);
+            return RECOGNIZED_CHILD_TAGS.contains(tagName) ||
+                   CompilationUnits.isAssignableFrom(IEvaluable.class, CompilationUnits.getCompilationClassForTag(tagName));
         }
 
         @Override
@@ -1622,9 +1638,12 @@ public final class CompilationUnits {
         private static final String ATTRIBUTE_CUSTOM_BUILDER = "customBuilder";
         private static final String ATTRIBUTE_SELF_SERIALIZATION_POLICY = "selfSerializationPolicy";
         private static final String ATTRIBUTE_CHILD_SERIALIZATION_POLICY = "childSerializationPolicy";
+        private static final String ATTRIBUTE_ESCAPE_QUOTES = "escapeQuotes";  //true value indicates that the single quotes needs to be escaped
+                                                                               //from inside the final serialized value of the group.
         private static final String[] ATTRIBUTES = {ATTRIBUTE_NAME, ATTRIBUTE_TYPE, ATTRIBUTE_CUSTOM_BUILDER,
                                                     ATTRIBUTE_SELF_SERIALIZATION_POLICY,
-                                                    ATTRIBUTE_CHILD_SERIALIZATION_POLICY};
+                                                    ATTRIBUTE_CHILD_SERIALIZATION_POLICY,
+                                                    ATTRIBUTE_ESCAPE_QUOTES};
 
         //private static final String CHILDREN_XPATH = "./set | ./group";
         //private static final String CHILDREN_XPATH2 = "./init";
@@ -1661,6 +1680,9 @@ public final class CompilationUnits {
                                                                                               //of a child group by the
                                                                                               //parent group during
                                                                                               //serialization.
+        private boolean escapeQuotes = false;  //defined a boolean variable for performance reasons.
+                                               //Otherwise we could have very well read the information
+                                               //directly by checking the value of the respective attribute.
 
         boolean isHeadless = false;  //marking a group as headless would affect its serialization scheme.
                                              //It's key would never be serialized irrespective of the value of it's self serialization policy.
@@ -1710,6 +1732,12 @@ public final class CompilationUnits {
             setSerializationPolicy(false);  //set serialization policy for self
             setSerializationPolicy(true);  //set serialization policy for children
             runtimeSerializationPolicies = serializationPolicies;
+
+            String escapeQuotesTmp = getAttribute(ATTRIBUTE_ESCAPE_QUOTES);
+            if (escapeQuotesTmp == null || "".equals(escapeQuotesTmp)) {
+                escapeQuotesTmp = "false";
+            }
+            escapeQuotes = "true".equalsIgnoreCase(escapeQuotesTmp);
             //------------------------------------------------------------------------------
             //------------------------------------------------------------------------------
         }
@@ -1973,6 +2001,7 @@ public final class CompilationUnits {
             boolean canMarkExtensionsAsProcessed = !hasConditionalExtends();
             for (Extends extension : getExtensions()) {
                 Extends.ExtensionOperation opType = extension.getExtensionOperation();
+                Extends.ExtensionScope extScope = extension.getExtensionScope();
                 Object baseUnitPath = extension.getValue(compilationRuntimeContext);
                 if (baseUnitPath == null) {
                     continue;
@@ -1981,6 +2010,7 @@ public final class CompilationUnits {
                 extendedUnit = Group.doExtendFromBase(extendedUnit,
                                             baseUnit.extend(compilationRuntimeContext, mctr),
                                             opType,
+                                            extScope,
                                             true,
                                             compilationRuntimeContext,
                                             mctr);
@@ -2022,6 +2052,7 @@ public final class CompilationUnits {
         private static Group doExtendFromBase(Group superUnit,
                                               Group baseUnit,
                                               Extends.ExtensionOperation opType,
+                                              Extends.ExtensionScope extScope,
                                               boolean isThroughExplicitInheritance,
                                               CompilationRuntimeContext compilationRuntimeContext,
                                               CompiledTemplatesRegistry mctr) throws XPathExpressionException {
@@ -2084,6 +2115,7 @@ public final class CompilationUnits {
                                                        thisSubGroup.extend(compilationRuntimeContext, mctr),
                                                        thatSubGroup.extend(compilationRuntimeContext, mctr),
                                                        opType,
+                                                       extScope,
                                                        false,
                                                        compilationRuntimeContext,
                                                        mctr);
@@ -2114,6 +2146,23 @@ public final class CompilationUnits {
                 //Also this method gets called only for the extension strategy 'merge' hence the logic should focus on merging the additional cu's.
                 //Also the method gets called over the cloned instance so there is no need to worry about modifying the state of the original object.
                 thisClonedGrp.doExtendAdditionalUnitsFromBaseUsingMerge(baseUnit, compilationRuntimeContext);
+
+                //check if base attributes also need to be inherited.
+                if (extScope == Extends.ExtensionScope.FULL) {
+                    //inherit attributes from the base unit
+                    Properties baseAttributes = baseUnit.getAttributes();
+                    if (baseAttributes != null && baseAttributes.size() > 0) {
+                        //there are attributes to be copied from base.
+                        for (String key: baseAttributes.stringPropertyNames()) {
+                            if (!ATTRIBUTE_ID.equals(key)) {  //attributes other than the one corresponding to id are allowed inheritance
+                                thisClonedGrp.setAttributeIffNew(key, baseAttributes.getProperty(key));
+                            }
+                        }
+                        //the attributes inside thisCloneGrp might have been updated by now.
+                        //Let's give a chance to the performance variables to reinitialize.
+                        thisClonedGrp.initPerformanceVariables();
+                    }
+                }
             }
             return thisClonedGrp;
         }
@@ -2229,7 +2278,7 @@ public final class CompilationUnits {
                     value = CompilationUnitsSerializationFactory.getGroupSerializer(
                                 CompilationUnitsSerializationFactory.SerializerType.MAP).
                                                    serialize(compilationRuntimeContext, this);
-                    return value;
+                    return escapeQuotes && value instanceof String? ((String) value).replaceAll("'", "\\\\\\\\'"): value;
                 } finally {
                     //doFinally(compilationRuntimeContext);
                     postGetValue(value, compilationRuntimeContext);
@@ -2275,19 +2324,20 @@ public final class CompilationUnits {
             } finally {
                 doFinally(compilationRuntimeContext);
             } */
-            return CompilationUnitsSerializationFactory.getGroupSerializer(
+            Object value = CompilationUnitsSerializationFactory.getGroupSerializer(
                                 CompilationUnitsSerializationFactory.SerializerType.JSON).
                                                            serialize(compilationRuntimeContext, this);
+            return escapeQuotes && value instanceof String? ((String) value).replaceAll("'", "\\\\\\\\'"): value;
         }
 
         /* For group we are not interested in performing any transformations as such operations don't really make
            sense for a group. Overriding the method to return the input value as is without any transformations being
-           performed */
+           performed
         @Override
         protected Object getEvaluatedValue(CompilationRuntimeContext compilationRuntimeContext,
                 Object thisValue) throws XPathExpressionException {
             return thisValue;
-        }
+        } */
     }
 
     //Headless group
@@ -2615,13 +2665,28 @@ public final class CompilationUnits {
                 return type;
             }
         }
+        public static enum ExtensionScope {
+            CHILDREN ("children"),
+            FULL ("full");  //both attributes and children
+
+            private String scope = "";
+            private ExtensionScope(String scope) {
+                this.scope = scope;
+            }
+            private String getScopeAsString() {
+                return scope;
+            }
+        }
         private static final ExtensionOperation DEFAULT_EXTENSION_OPERATION = ExtensionOperation.MERGE;
+        private static final ExtensionScope DEFAULT_EXTENSION_SCOPE = ExtensionScope.FULL;
 
         private static final String ATTRIBUTE_EXTEND_OP = "operation";
+        private static final String ATTRIBUTE_EXTEND_SCOPE = "scope";
         private static final String ATTRIBUTE_DEFAULT_VALUE = "default";
-        private static final String[] ATTRIBUTES = {ATTRIBUTE_EXTEND_OP, ATTRIBUTE_DEFAULT_VALUE};
+        private static final String[] ATTRIBUTES = {ATTRIBUTE_EXTEND_OP, ATTRIBUTE_EXTEND_SCOPE, ATTRIBUTE_DEFAULT_VALUE};
 
         private ExtensionOperation extOp = DEFAULT_EXTENSION_OPERATION;
+        private ExtensionScope extScope = DEFAULT_EXTENSION_SCOPE;
 
         @Override
         protected void doCompileAttributes(Node n) throws XPathExpressionException {
@@ -2644,6 +2709,15 @@ public final class CompilationUnits {
             } else {
                 extOp = DEFAULT_EXTENSION_OPERATION;
             }
+
+            String extScopeAsStr = getAttribute(ATTRIBUTE_EXTEND_SCOPE);
+            if (ExtensionScope.CHILDREN.getScopeAsString().equalsIgnoreCase(extScopeAsStr)) {
+                extScope = ExtensionScope.CHILDREN;;
+            } else if (ExtensionScope.FULL.getScopeAsString().equalsIgnoreCase(extScopeAsStr)) {
+                extScope = ExtensionScope.FULL;
+            } else {
+                extScope = DEFAULT_EXTENSION_SCOPE;
+            }
         }
 
         boolean hasConditionals() {
@@ -2652,6 +2726,10 @@ public final class CompilationUnits {
 
         public ExtensionOperation getExtensionOperation() {
             return extOp;
+        }
+
+        public ExtensionScope getExtensionScope() {
+            return extScope;
         }
 
         @Override
