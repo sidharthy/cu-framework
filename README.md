@@ -1,6 +1,9 @@
 # Compilation Units Framework (cu-framework)
 _A very generic and powerful data driven coding and testing framework. A whole new paradigm enabling true data driven programming._
 
+_<<<<<<Upcoming: Support for namespaces.>>>>>>_
+<br><br>
+
 **Compilation Units and their categorization**: Compilation units (aka cus) are the building blocks of this cu-framework. These represent processing blocks that carry out specific tasks in a generic manner which when intertwined with each other can easily build complex programming logic. The compilation units have associated xml tags and the entire processing logic can be defined using a simple xml structure. The xml can be stored inside a database, an external file, on cloud, or even constructed on the fly which means the processing logic can now accompany the data and even picked/switched/built at runtime. The cu framework also supports inheritance where in the logic residing inside one or more base xml files can directly be imported and auto-merged to build a new one. The framework also provides a revolutionary data driven testing framework.
 
 Categorization:
