@@ -1,5 +1,5 @@
 # Compilation Units Framework (cu-framework)
-_A very generic and powerful data driven coding and testing framework. A whole new paradigm enabling true data driven programming._
+_A very generic and powerful data driven coding and testing framework. A whole new paradigm enabling true data driven programming. [Try Live Fiddle](http://www.bracket.co.in/cufiddle)._
 
 _<<<<<<Upcoming: Support for cu packages/namespaces.>>>>>>_
 <br><br>
