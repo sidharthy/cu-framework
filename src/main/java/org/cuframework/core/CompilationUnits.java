@@ -30,6 +30,7 @@ package org.cuframework.core;
 
 import org.cuframework.MapOfMaps;
 import org.cuframework.serializer.CompilationUnitsSerializationFactory;
+import org.cuframework.util.cu.FileIO;
 import org.cuframework.util.cu.LoadProperties;
 import org.cuframework.util.UtilityFunctions;
 
@@ -99,6 +100,8 @@ public final class CompilationUnits {
         java.util.Map<String, Class<? extends ICompilationUnit>> moreCUs = new HashMap<String, Class<? extends ICompilationUnit>>();
         moreCUs.put(LoadProperties.TAG_NAME, LoadProperties.class);  //adding in more cu map as it is a utility cu and its ok to allow
                                                                      //applications to replace it with their own implementations.
+        moreCUs.put(FileIO.TAG_NAME, FileIO.class);  //adding in more cu map as it is a utility cu and its ok to allow
+                                                     //applications to replace it with their own implementations.
 
         TAG_TO_UNIT_MAPPING.put(CORE_CUs_CONTAINER, coreCUs);
         TAG_TO_UNIT_MAPPING.put(MORE_CUs_CONTAINER, moreCUs);
@@ -685,7 +688,7 @@ public final class CompilationUnits {
                         //thisValue with single quotes would be done as that causes problems in case the value itself contains
                         //single quotes. If the value needs to be enclosed with single quotes or double quotes then do so at
                         //the source itself i.e. at the time of defining the expression inside the xml.
-                        nodeTextExpression = nodeTextExpression.replaceAll("\\b" + key + "\\b", Matcher.quoteReplacement("" + value));
+                        nodeTextExpression = nodeTextExpression.replaceAll("\\b\\Q" + key + "\\E\\b", Matcher.quoteReplacement("" + value));
                     }
                 }
             }
@@ -1054,7 +1057,9 @@ public final class CompilationUnits {
                              // return true.
             }
             Object evaluableValueTmp = evaluable.getValue(compilationRuntimeContext);
-            evaluableValueTmp = "".equals(evaluableValueTmp) ? null : evaluableValueTmp;
+            //evaluableValueTmp = "".equals(evaluableValueTmp) ? null : evaluableValueTmp;  //commented out: 10th Mar 20.
+                                                                                            //To check for empty string use the regex ^()$
+                                                                                            //To check for any string (including empty string) use the regex ^(.*)$
             return evaluableValueTmp == null ? false : Pattern.matches(expr, evaluableValueTmp.toString());
         }
     }

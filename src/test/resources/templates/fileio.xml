@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root name="fileio.xml">
+<headless-group id="fileio" selfSerializationPolicy="value">
+ <headless-executable-group>
+   <using>
+     <fileio id="input-file">
+       <using>
+         <valueof id="path" default="/Users/sidharthyadav/Desktop/test.log"/>
+         <valueof id="io-mode" default="read"/>
+         <valueof id="type" default="text"/>
+         <valueof id="operation" default="open"/>
+       </using>
+       <init>
+         <set attribute="input-file-stream" in="IO-MAP" createMapIfMissing="true">
+           <valueof key="-file-io-result-.result">
+             <internal-map/>
+           </valueof>
+         </set>
+       </init>
+     </fileio>
+     <fileio id="output-file">
+       <using>
+         <valueof id="path" default="/Users/sidharthyadav/Desktop/processed.log"/>
+         <valueof id="io-mode" default="write"/>
+         <valueof id="write-mode" default="overwrite"/>
+         <valueof id="operation" default="open"/>
+       </using>
+       <init>
+         <set attribute="output-file-stream" in="IO-MAP" createMapIfMissing="true">
+           <valueof key="-file-io-result-.result">
+             <internal-map/>
+           </valueof>
+         </set>
+       </init>
+     </fileio>
+     <valueof id="CRLF" key="line.separator">
+       <map name="SYSTEM-MAP" keyDelimiter=";"/>
+     </valueof>
+     <valueof id="TIME" key="CURRENT_TIME">
+       <map name="SYSTEM-MAP"/>
+     </valueof>
+   </using>
+   <loop>
+     <using>
+       <valueof id="start" default="0"/>
+     </using>
+     <break>
+       <conditional expression="not(1) and not(2)">
+         <condition id="1" expression="true">
+           <valueof>index = 0</valueof>
+         </condition>
+         <condition id="2" expression="^(.*)$">
+           <valueof key="line-read">
+             <map name="IO-MAP"/>
+           </valueof>
+         </condition>
+       </conditional>
+     </break>
+     <headless-executable-group>
+       <init>
+         <fileio id="input-file">
+           <using>
+             <valueof id="stream" key="input-file-stream">
+               <map name="IO-MAP"/>
+             </valueof>
+             <valueof id="operation" default="read"/>
+           </using>
+           <init>
+             <set attribute="line-read" in="IO-MAP" createMapIfMissing="true" outputNullValue="true">
+               <valueof key="-file-io-result-.result">
+                 <internal-map/>
+               </valueof>
+             </set>
+             <log id="read-line" level="info" target="console">
+               <valueof key="-file-io-result-.result">
+                 <internal-map/>
+               </valueof>
+             </log>
+           </init>
+           <finally>
+             <log id="read-operation-endstate" level="info" target="console">
+               <valueof key="_$execution-endstate">
+                 <internal-map/>
+               </valueof>
+             </log>
+             <log id="read-operation-outcome" level="info" target="console">
+               <valueof>
+                 <internal-map/>
+               </valueof>
+             </log>
+             <fileio id="output-file">
+               <on>
+                 <condition expression="^(.*)$">
+                   <valueof key="line-read">
+                     <map name="IO-MAP"/>
+                   </valueof>
+                 </condition>
+               </on>
+               <using>
+                 <valueof id="stream" key="output-file-stream">
+                   <map name="IO-MAP"/>
+                 </valueof>
+                 <valueof id="operation" default="write"/>
+                 <valueof id="payload" key="-file-io-result-.result">
+                   concat('this', '&#9;', '_$execution-endstate', '&#9;', 'TIME', 'CRLF')
+                   <internal-map/>
+                 </valueof>
+               </using>
+               <!-- <init>
+                 <log id="system-map" level="info" target="console">
+                   <valueof>
+                     <internal-map/>
+                   </valueof>
+                 </log>
+               </init> -->
+               <finally>
+                 <log id="write-operation-endstate" level="info" target="console">
+                   <valueof key="_$execution-endstate">
+                     <internal-map/>
+                   </valueof>
+                 </log>
+                 <log id="write-operation-outcome" level="info" target="console">
+                   <valueof>
+                     <internal-map/>
+                   </valueof>
+                 </log>
+               </finally>
+             </fileio>
+           </finally>
+         </fileio>
+       </init>
+     </headless-executable-group>
+     <finally>
+       <log id="loop-index-value" level="info" target="console">
+         <valueof>index</valueof>
+       </log>
+     </finally>
+   </loop>
+   <finally>
+     <fileio id="input-file">
+       <using>
+         <valueof id="stream" key="input-file-stream">
+           <map name="STREAMS-MAP"/>
+         </valueof>
+         <valueof id="operation" default="close"/>
+       </using>
+     </fileio>
+     <fileio id="output-file">
+       <using>
+         <valueof id="stream" key="output-file-stream">
+           <map name="STREAMS-MAP"/>
+         </valueof>
+         <valueof id="operation" default="close"/>
+       </using>
+     </fileio>
+   </finally>
+ </headless-executable-group>
+</headless-group>
+</root>
