@@ -35,6 +35,7 @@ import org.cuframework.util.cu.LoadProperties;
 import org.cuframework.util.UtilityFunctions;
 
 import java.lang.reflect.Array;
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -1071,8 +1072,9 @@ public final class CompilationUnits {
         private static final String ATTRIBUTE_DEFAULT_VALUE = "default";
         private static final String ATTRIBUTE_EXTRACTION_EXPRESSION = "extractionExpression";
         private static final String ATTRIBUTE_MATCHER_GROUP = "matcherGroup";
+        private static final String ATTRIBUTE_MESSAGE_FORMAT = "messageFormat";
         private static final String[] ATTRIBUTES = {ATTRIBUTE_KEY, ATTRIBUTE_DEFAULT_VALUE,
-                                                    ATTRIBUTE_EXTRACTION_EXPRESSION, ATTRIBUTE_MATCHER_GROUP};
+                                                    ATTRIBUTE_EXTRACTION_EXPRESSION, ATTRIBUTE_MATCHER_GROUP, ATTRIBUTE_MESSAGE_FORMAT};
         //private static final String CHILDREN_XPATH = "./map | ./internal-map";
         //private static final String CHILDREN_XPATH2 = "./on";
         private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Map.TAG_NAME, InternalMap.TAG_NAME, Json.TAG_NAME, On.TAG_NAME});
@@ -1198,7 +1200,7 @@ public final class CompilationUnits {
             if (abortIfNotSatisfy && !satisfiesAtLeastOne) {
                 throw new RuntimeException("No available conditions satisfied.");
             }
-            return getExtractedGroupValue(value);
+            return getFormattedValue(getExtractedGroupValue(value));
         }
 
         private Object getExtractedGroupValue(Object value) {
@@ -1225,6 +1227,19 @@ public final class CompilationUnits {
                 //extraction expression to split the input value into an array of tokens.
                 return Pattern.compile(extractionExpr).split(value.toString());
             }
+        }
+
+        private Object getFormattedValue(Object value) {
+            if (value == null) {
+                return null;
+            }
+            String msgFormat = getAttribute(ATTRIBUTE_MESSAGE_FORMAT);
+            msgFormat = msgFormat == null || "".equals(msgFormat) ? null : msgFormat;
+            if (msgFormat == null) {
+                return value;  //no message formatter specified. Return the value as is.
+            }
+            return (new MessageFormat(msgFormat)).
+                       format(value instanceof Object[] ? value : new Object[]{value});
         }
 
         @Override

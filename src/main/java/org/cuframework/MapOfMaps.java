@@ -79,7 +79,7 @@ public class MapOfMaps {
             Object value = entry.getValue();
             sysPropsMap.put(key.toString(), value/* != null ? value.toString() : null*/);
         }
-        sysPropsMap.put("CURRENT_TIME", (new Date()).toString());
+        sysPropsMap.put("CURRENT_TIME", (new Date())/*.toString()*/);
         return sysPropsMap;
     }
 
