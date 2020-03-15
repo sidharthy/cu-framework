@@ -112,7 +112,8 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
                 }
                 return filledBuffer;
             }
-            return ((FileInputStream) stream).read();
+            int byteRead = ((FileInputStream) stream).read();
+            return byteRead == -1? null: byteRead;
         } else if (stream instanceof BufferedReader) {
             if (bytes != null) {
                 int _chars = Integer.parseInt(bytes);
