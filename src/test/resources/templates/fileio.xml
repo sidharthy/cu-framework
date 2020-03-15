@@ -5,7 +5,14 @@
    <using>
      <fileio id="input-file">
        <using>
-         <valueof id="path" default="/Users/sidharthyadav/Desktop/test.log"/>
+         <select id="path">
+           concat('user-home', '/Desktop/input.txt')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
          <valueof id="io-mode" default="read"/>
          <valueof id="type" default="text"/>
          <valueof id="operation" default="open"/>
@@ -20,7 +27,14 @@
      </fileio>
      <fileio id="output-file">
        <using>
-         <valueof id="path" default="/Users/sidharthyadav/Desktop/processed.log"/>
+         <select id="path">
+           concat('user-home', '/Desktop/output.txt')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
          <valueof id="io-mode" default="write"/>
          <valueof id="write-mode" default="overwrite"/>
          <valueof id="operation" default="open"/>
@@ -36,7 +50,7 @@
      <valueof id="CRLF" key="line.separator">
        <map name="SYSTEM-MAP" keyDelimiter=";"/>
      </valueof>
-     <valueof id="TIME" key="CURRENT_TIME">
+     <valueof id="TIME" key="CURRENT_TIME" messageFormat="{0, time}">
        <map name="SYSTEM-MAP"/>
      </valueof>
    </using>
@@ -140,7 +154,7 @@
      <fileio id="input-file">
        <using>
          <valueof id="stream" key="input-file-stream">
-           <map name="STREAMS-MAP"/>
+           <map name="IO-MAP"/>
          </valueof>
          <valueof id="operation" default="close"/>
        </using>
@@ -148,7 +162,7 @@
      <fileio id="output-file">
        <using>
          <valueof id="stream" key="output-file-stream">
-           <map name="STREAMS-MAP"/>
+           <map name="IO-MAP"/>
          </valueof>
          <valueof id="operation" default="close"/>
        </using>
