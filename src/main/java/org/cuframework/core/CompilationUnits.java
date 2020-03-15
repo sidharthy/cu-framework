@@ -466,6 +466,7 @@ public final class CompilationUnits {
      *
      */
     public abstract static class EvaluableCompilationUnit extends CompilationUnit implements IEvaluable {
+        private static final String ATTRIBUTE_MESSAGE_FORMAT = "messageFormat";
         private static final String SKIP_EVALUATION = "EVAL.NONE";  //if the text node value equals this string then no xpath evaluations would be performed
                                                                     //over the value of this cu. Explicit skipping of evaluations would come handy in cases
                                                                     //where the base cu has defined some transformation expressions but the super unit doesn't
@@ -493,6 +494,9 @@ public final class CompilationUnits {
         @Override
         protected void doCompileAttributes(Node n) throws XPathExpressionException {
             //compile all the attributes
+            setAttribute(
+                    ATTRIBUTE_MESSAGE_FORMAT,
+                    getAttributeValueIffAttributeIsDefined("@" + ATTRIBUTE_MESSAGE_FORMAT, n));
             setAttribute(
                     ATTRIBUTE_EVAL_IF_NULL,
                     getAttributeValueIffAttributeIsDefined("@" + ATTRIBUTE_EVAL_IF_NULL, n));
@@ -617,7 +621,7 @@ public final class CompilationUnits {
             boolean callPostGetValueInsideFinally = isCallPostGetValueInsideFinally();
             try {
                 preGetValue(compilationRuntimeContext);  //getValue's pre processing
-                Object value = doGetValue(compilationRuntimeContext);
+                Object value = getFormattedValue(doGetValue(compilationRuntimeContext));
                 //get the evaluated value
                 value = (value == null && !evalIfNull) ?
                                                  value :
@@ -654,6 +658,21 @@ public final class CompilationUnits {
                     compilationRuntimeContext.setInternalContext(savedInternalContext);
                 }
             }
+        }
+
+        //if the message format property is specified then the value would be processed using the MessageFormat class.
+        //subclasses to override if needed.
+        protected Object getFormattedValue(Object value) {
+            if (value == null) {
+                return null;
+            }
+            String msgFormat = getAttribute(ATTRIBUTE_MESSAGE_FORMAT);
+            msgFormat = msgFormat == null || "".equals(msgFormat) ? null : msgFormat;
+            if (msgFormat == null) {
+                return value;  //no message formatter specified. Return the value as is.
+            }
+            return (new MessageFormat(msgFormat)).
+                       format(value instanceof Object[] ? value : new Object[]{value});
         }
 
         //return the value after computing the value of the text() expression using the variables
@@ -1072,9 +1091,8 @@ public final class CompilationUnits {
         private static final String ATTRIBUTE_DEFAULT_VALUE = "default";
         private static final String ATTRIBUTE_EXTRACTION_EXPRESSION = "extractionExpression";
         private static final String ATTRIBUTE_MATCHER_GROUP = "matcherGroup";
-        private static final String ATTRIBUTE_MESSAGE_FORMAT = "messageFormat";
         private static final String[] ATTRIBUTES = {ATTRIBUTE_KEY, ATTRIBUTE_DEFAULT_VALUE,
-                                                    ATTRIBUTE_EXTRACTION_EXPRESSION, ATTRIBUTE_MATCHER_GROUP, ATTRIBUTE_MESSAGE_FORMAT};
+                                                    ATTRIBUTE_EXTRACTION_EXPRESSION, ATTRIBUTE_MATCHER_GROUP};
         //private static final String CHILDREN_XPATH = "./map | ./internal-map";
         //private static final String CHILDREN_XPATH2 = "./on";
         private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Map.TAG_NAME, InternalMap.TAG_NAME, Json.TAG_NAME, On.TAG_NAME});
@@ -1200,7 +1218,7 @@ public final class CompilationUnits {
             if (abortIfNotSatisfy && !satisfiesAtLeastOne) {
                 throw new RuntimeException("No available conditions satisfied.");
             }
-            return getFormattedValue(getExtractedGroupValue(value));
+            return getExtractedGroupValue(value);
         }
 
         private Object getExtractedGroupValue(Object value) {
@@ -1227,19 +1245,6 @@ public final class CompilationUnits {
                 //extraction expression to split the input value into an array of tokens.
                 return Pattern.compile(extractionExpr).split(value.toString());
             }
-        }
-
-        private Object getFormattedValue(Object value) {
-            if (value == null) {
-                return null;
-            }
-            String msgFormat = getAttribute(ATTRIBUTE_MESSAGE_FORMAT);
-            msgFormat = msgFormat == null || "".equals(msgFormat) ? null : msgFormat;
-            if (msgFormat == null) {
-                return value;  //no message formatter specified. Return the value as is.
-            }
-            return (new MessageFormat(msgFormat)).
-                       format(value instanceof Object[] ? value : new Object[]{value});
         }
 
         @Override
