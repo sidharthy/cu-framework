@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root name="rdbms-to-tsv.xml">
+<headless-group id="rdbms-to-tsv" selfSerializationPolicy="value">
+ <headless-executable-group>
+   <using>
+     <rdbms id="rdbms-connection">
+       <using>
+         <valueof id="db-driver" key="db-driver" default="org.gjt.mm.mysql.Driver">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <valueof id="db-url" key="db-url" default="jdbc:mysql://localhost/public">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <valueof id="username" key="username" default="root">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <valueof id="password" key="password" default="password">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <valueof id="operation" default="open"/>
+       </using>
+       <init>
+         <log id="rdbms-open-connection-operation-endstate" level="info" target="console">
+           <valueof key="_$execution-endstate">
+             <internal-map/>
+           </valueof>
+         </log>
+         <log id="rdbms-open-connection-operation-outcome" level="info" target="console">
+           <valueof key="_$execution-outcome">
+             <internal-map/>
+           </valueof>
+         </log>
+         <set attribute="rdbms-connection" in="IO-MAP" createMapIfMissing="true">
+           <valueof key="-rdbms-io-result-.result">
+             <internal-map/>
+           </valueof>
+           <on>
+             <condition expression="success">
+               <valueof key="_$execution-endstate">
+                 <internal-map/>
+               </valueof>
+             </condition>
+           </on>
+         </set>
+       </init>
+     </rdbms>
+     <fileio id="output-file">
+       <using>
+         <select id="path">
+           concat('user-home', '/Desktop/output.txt')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
+         <valueof id="io-mode" default="write"/>
+         <valueof id="write-mode" default="append"/>
+         <valueof id="operation" default="open"/>
+       </using>
+       <init>
+         <set attribute="output-file-stream" in="IO-MAP" createMapIfMissing="true">
+           <valueof key="-file-io-result-.result">
+             <internal-map/>
+           </valueof>
+         </set>
+       </init>
+     </fileio>
+     <valueof id="CRLF" key="line.separator">
+       <map name="SYSTEM-MAP" keyDelimiter=";"/>
+     </valueof>
+     <valueof id="TIME" key="CURRENT_TIME" messageFormat="{0, time}">
+       <map name="SYSTEM-MAP"/>
+     </valueof>
+   </using>
+   <loop>
+     <using>
+       <valueof id="start" default="0"/>
+     </using>
+     <break>
+       <conditional expression="not(1) and not(2)">
+         <condition id="1" expression="true">
+           <valueof>index = 0</valueof>
+         </condition>
+         <condition id="2" expression="^(.*)$">
+           <valueof key="resultset-row">
+             <map name="IO-MAP"/>
+           </valueof>
+         </condition>
+       </conditional>
+     </break>
+     <init>
+       <rdbms id="rdbms-statement">
+         <using>
+           <valueof id="connection" key="rdbms-connection">
+             <map name="IO-MAP"/>
+           </valueof>
+           <valueof id="query" default="select * from user"/>
+           <valueof id="query-type" default="select"/>
+           <valueof id="operation" default="execute"/>
+         </using>
+         <init>
+           <set attribute="rdbms-statement-resultset" in="IO-MAP" createMapIfMissing="true">
+             <valueof key="-rdbms-io-result-.result">
+               <internal-map/>
+             </valueof>
+           </set>
+         </init>
+       </rdbms>
+     </init>
+     <headless-executable-group>
+       <init>
+         <rdbms id="rdbms-resultset-row">
+           <using>
+             <valueof id="result-set" key="rdbms-statement-resultset">
+               <map name="IO-MAP"/>
+             </valueof>
+             <valueof id="operation" default="read"/>
+           </using>
+           <init>
+             <set attribute="resultset-row" in="IO-MAP" createMapIfMissing="true" outputNullValue="true">
+               <valueof key="-rdbms-io-result-.result">
+                 <internal-map/>
+               </valueof>
+             </set>
+             <log id="read-row" level="info" target="console">
+               <valueof key="-rdbms-io-result-.result">
+                 <internal-map/>
+               </valueof>
+             </log>
+           </init>
+           <finally>
+             <log id="read-operation-endstate" level="info" target="console">
+               <valueof key="_$execution-endstate">
+                 <internal-map/>
+               </valueof>
+             </log>
+             <log id="read-operation-outcome" level="info" target="console">
+               <valueof>
+                 <internal-map/>
+               </valueof>
+             </log>
+             <loop id="payload-generator">
+               <on>
+                 <condition expression="^(.*)$">
+                   <valueof key="resultset-row">
+                     <map name="IO-MAP"/>
+                   </valueof>
+                 </condition>
+               </on>
+               <using>
+                 <valueof id="iterable" key="-rdbms-io-result-.result.values">
+                   <internal-map/>
+                 </valueof>
+               </using>
+               <headless-executable-group>
+                 <!-- <using>
+                   <select id="item-datatype">
+                     <using>
+                       <valueof id="dynamic-datatype-accessor">
+                         concat('-rdbms-io-result-.result.datatypes.', 'item-key')
+                       </valueof>
+                     </using>
+                     <conditional>
+                       <valueof key="$dynamic-datatype-accessor">
+                         <internal-map/>
+                       </valueof>
+                     </conditional>
+                   </select>
+                 </using> -->
+                 <init>
+                   <set attribute="row-header" in="TMP-MAP" createMapIfMissing="true" breakOnFirstValueSet="false">
+                     concat('this', '&#9;', 'item-key')
+                     <valueof id="row-header" key="row-header" default="">
+                       <map name="TMP-MAP"/>
+                     </valueof>
+                     <on>
+                       <conditional expression="not(1)">
+                         <condition id="1" expression="true">
+                           <valueof key="headers-already-processed" default="false">
+                             <map name="TMP-MAP"/>
+                           </valueof>
+                         </condition>
+                       </conditional>
+                     </on>
+                   </set>
+                   <set attribute="row-value" in="TMP-MAP" createMapIfMissing="true" breakOnFirstValueSet="false">
+                     concat('this', '&#9;', 'item-value')
+                     <valueof id="row-value" key="row-value" default="">
+                       <map name="TMP-MAP"/>
+                     </valueof>
+                   </set>
+                 </init>
+               </headless-executable-group>
+               <finally>
+                 <set attribute="headers-already-processed" in="TMP-MAP" createMapIfMissing="true">
+                   <valueof default="true"/>
+                 </set>
+                 <fileio id="output-file">
+                   <on>
+                     <condition expression="^(.*)$">
+                       <valueof key="resultset-row">
+                         <map name="IO-MAP"/>
+                       </valueof>
+                     </condition>
+                   </on>
+                   <using>
+                     <valueof id="stream" key="output-file-stream">
+                       <map name="IO-MAP"/>
+                     </valueof>
+                     <valueof id="operation" default="write"/>
+                     <select id="payload">
+                       concat('row-header', 'CRLF', 'row-value')
+                       <using>
+                         <valueof id="row-header" key="row-header" evalIfNull="false" default="">
+                           concat('CRLF', 'CRLF', '-------------------- rdbms-to-tsv.xml output (', 'TIME', ') --------------------', 
+                                                 'CRLF', translate('this', 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'CRLF')
+                           <map name="TMP-MAP"/>
+                         </valueof>
+                         <valueof id="row-value" key="row-value">
+                           <map name="TMP-MAP"/>
+                         </valueof>
+                       </using>
+                     </select>
+                   </using>
+                   <finally>
+                     <log id="write-operation-endstate" level="info" target="console">
+                       <valueof key="_$execution-endstate">
+                         <internal-map/>
+                       </valueof>
+                     </log>
+                     <log id="write-operation-outcome" level="info" target="console">
+                       <valueof>
+                         <internal-map/>
+                       </valueof>
+                     </log>
+                   </finally>
+                 </fileio>
+                 <unset attribute="row-header">
+                   <map name="TMP-MAP"/>
+                 </unset>
+                 <unset attribute="row-value">
+                   <map name="TMP-MAP"/>
+                 </unset>
+               </finally>
+             </loop>
+           </finally>
+         </rdbms>
+       </init>
+     </headless-executable-group>
+     <finally>
+       <log id="loop-index-value" level="info" target="console">
+         <valueof>index</valueof>
+       </log>
+     </finally>
+   </loop>
+   <finally>
+     <rdbms id="rdbms-connection">
+       <using>
+         <valueof id="closeable" key="rdbms-connection">
+           <map name="IO-MAP"/>
+         </valueof>
+         <valueof id="operation" default="close"/>
+       </using>
+     </rdbms>
+     <fileio id="output-file">
+       <using>
+         <valueof id="stream" key="output-file-stream">
+           <map name="IO-MAP"/>
+         </valueof>
+         <valueof id="operation" default="close"/>
+       </using>
+     </fileio>
+   </finally>
+ </headless-executable-group>
+</headless-group>
+</root>

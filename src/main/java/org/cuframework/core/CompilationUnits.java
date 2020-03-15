@@ -31,6 +31,7 @@ package org.cuframework.core;
 import org.cuframework.MapOfMaps;
 import org.cuframework.serializer.CompilationUnitsSerializationFactory;
 import org.cuframework.util.cu.FileIO;
+import org.cuframework.util.cu.RdbmsIO;
 import org.cuframework.util.cu.LoadProperties;
 import org.cuframework.util.UtilityFunctions;
 
@@ -103,6 +104,8 @@ public final class CompilationUnits {
                                                                      //applications to replace it with their own implementations.
         moreCUs.put(FileIO.TAG_NAME, FileIO.class);  //adding in more cu map as it is a utility cu and its ok to allow
                                                      //applications to replace it with their own implementations.
+        moreCUs.put(RdbmsIO.TAG_NAME, RdbmsIO.class);  //adding in more cu map as it is a utility cu and its ok to allow
+                                                       //applications to replace it with their own implementations.
 
         TAG_TO_UNIT_MAPPING.put(CORE_CUs_CONTAINER, coreCUs);
         TAG_TO_UNIT_MAPPING.put(MORE_CUs_CONTAINER, moreCUs);

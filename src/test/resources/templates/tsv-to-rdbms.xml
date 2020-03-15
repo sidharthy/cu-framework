@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root name="tsv-to-rdbms.xml">
+<headless-group id="tsv-to-rdbms" selfSerializationPolicy="value">
+ <headless-executable-group>
+   <using>
+     <fileio id="input-file">
+       <using>
+         <select id="path">
+           concat('user-home', '/Desktop/tsv-to-rdbms.txt')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
+         <valueof id="io-mode" default="read"/>
+         <valueof id="type" default="text"/>
+         <valueof id="operation" default="open"/>
+       </using>
+       <init>
+         <set attribute="input-file-stream" in="IO-MAP" createMapIfMissing="true">
+           <valueof key="-file-io-result-.result">
+             <internal-map/>
+           </valueof>
+         </set>
+       </init>
+     </fileio>
+     <rdbms id="rdbms-connection">
+       <using>
+         <valueof id="db-driver" key="db-driver" default="org.gjt.mm.mysql.Driver">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <valueof id="db-url" key="db-url" default="jdbc:mysql://localhost/public">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <valueof id="username" key="username" default="root">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <valueof id="password" key="password" default="password">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <valueof id="operation" default="open"/>
+       </using>
+       <init>
+         <log id="rdbms-open-connection-operation-endstate" level="info" target="console">
+           <valueof key="_$execution-endstate">
+             <internal-map/>
+           </valueof>
+         </log>
+         <log id="rdbms-open-connection-operation-outcome" level="info" target="console">
+           <valueof key="_$execution-outcome">
+             <internal-map/>
+           </valueof>
+         </log>
+         <set attribute="rdbms-connection" in="IO-MAP" createMapIfMissing="true">
+           <valueof key="-rdbms-io-result-.result">
+             <internal-map/>
+           </valueof>
+           <on>
+             <condition expression="success">
+               <valueof key="_$execution-endstate">
+                 <internal-map/>
+               </valueof>
+             </condition>
+           </on>
+         </set>
+       </init>
+     </rdbms>
+     <valueof id="CRLF" key="line.separator">
+       <map name="SYSTEM-MAP" keyDelimiter=";"/>
+     </valueof>
+     <valueof id="TIME" key="CURRENT_TIME" messageFormat="{0, time}">
+       <map name="SYSTEM-MAP"/>
+     </valueof>
+   </using>
+   <loop>
+     <using>
+       <valueof id="start" default="0"/>
+     </using>
+     <break>
+       <conditional expression="not(1) and not(2)">
+         <condition id="1" expression="true">
+           <valueof>index = 0</valueof>
+         </condition>
+         <condition id="2" expression="^(.*)$">
+           <valueof key="line-read">
+             <map name="IO-MAP"/>
+           </valueof>
+         </condition>
+       </conditional>
+     </break>
+     <headless-executable-group>
+       <init>
+         <fileio id="input-file">
+           <using>
+             <valueof id="stream" key="input-file-stream">
+               <map name="IO-MAP"/>
+             </valueof>
+             <valueof id="operation" default="read"/>
+           </using>
+           <init>
+             <set attribute="line-read" in="IO-MAP" createMapIfMissing="true" outputNullValue="true">
+               <valueof key="-file-io-result-.result">
+                 <internal-map/>
+               </valueof>
+             </set>
+             <log id="read-line" level="info" target="console">
+               <valueof key="-file-io-result-.result">
+                 <internal-map/>
+               </valueof>
+             </log>
+           </init>
+           <finally>
+             <log id="read-operation-endstate" level="info" target="console">
+               <valueof key="_$execution-endstate">
+                 <internal-map/>
+               </valueof>
+             </log>
+             <log id="read-operation-outcome" level="info" target="console">
+               <valueof>
+                 <internal-map/>
+               </valueof>
+             </log>
+             <log id="potential-insert-query" level="info" target="console">
+               <valueof id="query" key="line-read" extractionExpression="\t" messageFormat="insert into user values({0}, ''{1}'', {2})">
+                 <map name="IO-MAP"/>
+               </valueof>
+             </log>
+             <rdbms id="rdbms-insert-statement">
+               <using>
+                 <valueof id="connection" key="rdbms-connection">
+                   <map name="IO-MAP"/>
+                 </valueof>
+                 <valueof id="query" key="line-read" extractionExpression="\t" messageFormat="insert into user values({0}, ''{1}'', {2})">
+                   <map name="IO-MAP"/>
+                 </valueof>
+                 <valueof id="query-type" default="insert"/>
+                 <valueof id="operation" default="execute"/>
+               </using>
+               <init>
+                 <log id="insert-operation-endstate" level="info" target="console">
+                   <valueof key="_$execution-endstate">
+                     <internal-map/>
+                   </valueof>
+                 </log>
+                 <log id="insert-operation-outcome" level="info" target="console">
+                   <valueof key="_$execution-outcome">
+                     <internal-map/>
+                   </valueof>
+                 </log>
+               </init>
+             </rdbms>
+           </finally>
+         </fileio>
+       </init>
+     </headless-executable-group>
+     <finally>
+       <log id="loop-index-value" level="info" target="console">
+         <valueof>index</valueof>
+       </log>
+     </finally>
+   </loop>
+   <finally>
+     <fileio id="input-file">
+       <using>
+         <valueof id="stream" key="input-file-stream">
+           <map name="IO-MAP"/>
+         </valueof>
+         <valueof id="operation" default="close"/>
+       </using>
+     </fileio>
+     <rdbms id="rdbms-connection">
+       <using>
+         <valueof id="closeable" key="rdbms-connection">
+           <map name="IO-MAP"/>
+         </valueof>
+         <valueof id="operation" default="close"/>
+       </using>
+     </rdbms>
+   </finally>
+ </headless-executable-group>
+</headless-group>
+</root>

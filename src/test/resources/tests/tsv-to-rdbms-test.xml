@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="tsv-to-rdbms-test.xml">
+  <headless-group id="-test-" selfSerializationPolicy="value" childSerializationPolicy="value">
+    <extends default="../templates/tsv-to-rdbms.xml#tsv-to-rdbms"/>
+    <finally>
+      <log id="begin-test-msg" level="info" target="console">
+        <valueof default="Starting tsv-to-rdbms tests..."/>
+      </log>
+      <log id="rdbms-read-value" level="info" target="console">
+        <valueof key="--test--value">
+          <internal-map/>
+        </valueof>
+      </log>
+      <log id="end-test-msg" level="info" target="console">
+        <valueof default="Finished tsv-to-rdbms tests."/>
+      </log>
+    </finally>
+  </headless-group>
+  <headless-group id="-test-data-">
+    <headless-group id="1">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="src" default="src/test/resources/files/rdbms-props"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+        <load-properties id="output">
+          <using>
+            <valueof id="stream" default="result=21"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+  </headless-group>
+</root>
