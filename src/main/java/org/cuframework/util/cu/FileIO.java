@@ -49,10 +49,20 @@ import org.cuframework.core.CompilationUnits.HeadlessExecutableGroup;
 public class FileIO extends HeadlessExecutableGroup implements IExecutable {
     public static final String TAG_NAME = "fileio";
 
+    //cu input parameters
+    private static final String PARAM_OPERATION = "operation";
+    private static final String PARAM_PATH = "path";  //path of file to read/write
+    private static final String PARAM_TYPE = "type";  //file type e.g. text
+    private static final String PARAM_IO_MODE = "io-mode";  //read, write
+    private static final String PARAM_WRITE_MODE = "write-mode";  //e.g. append
+    private static final String PARAM_STREAM = "stream";  //holds an object of io stream
+    private static final String PARAM_BYTES = "bytes";  //number of bytes to skip, read etc
+    private static final String PARAM_PAYLOAD = "payload";  //payload to write
+
     //the result or outcome of the execution should be set inside requestContext as a map and the name of the map key should be returned as the value of the function.
     @Override
     protected String doExecute(Map<String, Object> requestContext) {
-        String operation = (String) requestContext.get("operation");  //possible values - open, read, write, skip, close
+        String operation = (String) requestContext.get(PARAM_OPERATION);  //possible values - open, read, write, skip, close
         if (operation == null) {
             return null;
         }
@@ -77,10 +87,10 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
     }
 
     private Object openFile(Map<String, Object> requestContext) throws IOException {
-        String path = (String) requestContext.get("path");
-        String type = (String) requestContext.get("type");
+        String path = (String) requestContext.get(PARAM_PATH);
+        String type = (String) requestContext.get(PARAM_TYPE);
         boolean textFileType = "text".equalsIgnoreCase(type);
-        String ioMode = (String) requestContext.get("io-mode");
+        String ioMode = (String) requestContext.get(PARAM_IO_MODE);
         if (ioMode == null) {
             return null;
         }
@@ -88,7 +98,7 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
             case "READ": return textFileType? new BufferedReader(new InputStreamReader(new FileInputStream(path))): new FileInputStream(path);
             case "WRITE":
                          {
-                             String writeMode = (String) requestContext.get("write-mode");
+                             String writeMode = (String) requestContext.get(PARAM_WRITE_MODE);
                              return new FileOutputStream(path, writeMode == null? true: "append".equalsIgnoreCase(writeMode));
                          }
             default: throw new UnsupportedOperationException("Unsupported io mode: " + ioMode);
@@ -96,11 +106,11 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
     }
 
     private Object readFile(Map<String, Object> requestContext) throws IOException {
-        Object stream = requestContext.get("stream");
+        Object stream = requestContext.get(PARAM_STREAM);
         if (stream == null) {
             return null;
         }
-        String bytes = (String) requestContext.get("bytes");
+        String bytes = (String) requestContext.get(PARAM_BYTES);
         if (stream instanceof FileInputStream) {
             if (bytes != null) {
                 int _bytes = Integer.parseInt(bytes);
@@ -131,11 +141,11 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
     }
 
     private void writeFile(Map<String, Object> requestContext) throws IOException {
-        OutputStream stream = (OutputStream) requestContext.get("stream");
+        OutputStream stream = (OutputStream) requestContext.get(PARAM_STREAM);
         if (stream == null) {
             return;
         }
-        Object payload = requestContext.get("payload");
+        Object payload = requestContext.get(PARAM_PAYLOAD);
         if (payload instanceof byte[]) {
             stream.write((byte[]) payload);
         } else if (payload != null) {
@@ -144,12 +154,12 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
     }
 
     private Object skipFile(Map<String, Object> requestContext) throws IOException {
-        Object stream = requestContext.get("stream");
+        Object stream = requestContext.get(PARAM_STREAM);
         if (stream == null) {
             return null;
         }
         long skipCount = Long.parseLong(
-                                requestContext.get("bytes").toString());  //let it throw NFE or NPE if the expected attribute is null or non integer.
+                                requestContext.get(PARAM_BYTES).toString());  //let it throw NFE or NPE if the expected attribute is null or non integer.
         if (stream instanceof FileInputStream) {
             return ((FileInputStream) stream).skip(skipCount);
         } else if (stream instanceof BufferedReader) {
@@ -159,7 +169,7 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
     }
 
     private void closeFile(Map<String, Object> requestContext) throws IOException {
-        Object stream = requestContext.get("stream");
+        Object stream = requestContext.get(PARAM_STREAM);
         if (stream instanceof InputStream) {
             ((InputStream) stream).close();
         }

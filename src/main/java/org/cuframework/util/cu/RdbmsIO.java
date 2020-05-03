@@ -48,10 +48,22 @@ import org.cuframework.core.CompilationUnits.HeadlessExecutableGroup;
 public class RdbmsIO extends HeadlessExecutableGroup implements IExecutable {
     public static final String TAG_NAME = "rdbms";
 
+    //cu input parameters
+    private static final String PARAM_OPERATION = "operation";  //e.g. open, prepare, execute, read, close
+    private static final String PARAM_DB_DRIVER = "db-driver";  //database driver class
+    private static final String PARAM_DB_URL = "db-url";  //database url
+    private static final String PARAM_USERNAME = "username";  //connection username
+    private static final String PARAM_PASSWORD = "password";  //connection password
+    private static final String PARAM_CONNECTION = "connection";  //connection object to use to execute statements
+    private static final String PARAM_QUERY = "query";  //query to execute
+    private static final String PARAM_QUERY_TYPE = "query-type";  //e.g. select, insert, update, delete
+    private static final String PARAM_RESULT_SET = "result-set";  //query result set
+    private static final String PARAM_CLOSEABLE = "closeable";  //an object that can be closed e.g. connection, statement, result set
+
     //the result or outcome of the execution should be set inside requestContext as a map and the name of the map key should be returned as the value of the function.
     @Override
     protected String doExecute(Map<String, Object> requestContext) {
-        String operation = (String) requestContext.get("operation");  //possible values - open, prepare, execute, read, close
+        String operation = (String) requestContext.get(PARAM_OPERATION);  //possible values - open, prepare, execute, read, close
         if (operation == null) {
             return null;
         }
@@ -76,10 +88,10 @@ public class RdbmsIO extends HeadlessExecutableGroup implements IExecutable {
     }
 
     private Object openConnection(Map<String, Object> requestContext) throws ClassNotFoundException, SQLException {
-        String driver = (String) requestContext.get("db-driver");
-        String dburl = (String) requestContext.get("db-url");
-        String username = (String) requestContext.get("username");
-        String password = (String) requestContext.get("password");
+        String driver = (String) requestContext.get(PARAM_DB_DRIVER);
+        String dburl = (String) requestContext.get(PARAM_DB_URL);
+        String username = (String) requestContext.get(PARAM_USERNAME);
+        String password = (String) requestContext.get(PARAM_PASSWORD);
 
         Class.forName(driver);
         return DriverManager.getConnection(dburl, username, password);
@@ -90,9 +102,9 @@ public class RdbmsIO extends HeadlessExecutableGroup implements IExecutable {
     }
 
     private Object executeStatement(Map<String, Object> requestContext) throws SQLException {
-        Connection connection = (Connection) requestContext.get("connection");
-        String query = (String) requestContext.get("query");
-        String queryType = (String) requestContext.get("query-type");
+        Connection connection = (Connection) requestContext.get(PARAM_CONNECTION);
+        String query = (String) requestContext.get(PARAM_QUERY);
+        String queryType = (String) requestContext.get(PARAM_QUERY_TYPE);
         if (connection == null || query == null || queryType == null) {
             return null;
         }
@@ -109,31 +121,35 @@ public class RdbmsIO extends HeadlessExecutableGroup implements IExecutable {
     }
 
     private Object read(Map<String, Object> requestContext) throws SQLException {
-        Object _resultSet = requestContext.get("result-set");
+        Object _resultSet = requestContext.get(PARAM_RESULT_SET);
         if (!(_resultSet instanceof ResultSet)) {
             return null;
         }
+
+        String COLUMN_VALUES = "values";
+        String COLUMN_DATATYPES = "datatypes";
+
         ResultSet resultSet = (ResultSet) _resultSet;
         Map<String, Map<String, Object>> returnMap = null;
         if (resultSet.next()) {
             returnMap = new HashMap<>();
-            returnMap.put("values", new HashMap<String, Object>());
-            returnMap.put("datatypes", new HashMap<String, Object>());
+            returnMap.put(COLUMN_VALUES, new HashMap<String, Object>());
+            returnMap.put(COLUMN_DATATYPES, new HashMap<String, Object>());
             ResultSetMetaData rsmd = resultSet.getMetaData();
             int colCount = rsmd.getColumnCount();
             for (int i = 1; i <= colCount; i++) {
                 String colName = rsmd.getColumnName(i);
                 String colDataType = rsmd.getColumnTypeName(i);
                 Object colValue = resultSet.getObject(i);
-                returnMap.get("values").put(colName, colValue);
-                returnMap.get("datatypes").put(colName, colDataType);
+                returnMap.get(COLUMN_VALUES).put(colName, colValue);
+                returnMap.get(COLUMN_DATATYPES).put(colName, colDataType);
             }
         }
         return returnMap;
     }
 
     private void close(Map<String, Object> requestContext) throws SQLException {
-        Object closeable = requestContext.get("closeable");
+        Object closeable = requestContext.get(PARAM_CLOSEABLE);
         if (closeable instanceof Connection) {
             ((Connection) closeable).close();
         }
