@@ -45,7 +45,8 @@ public class LoadProperties extends ExecutableGroup implements IExecutable {
     //the result or outcome of the execution should be set inside requestContext as a map and the name of the map key should be returned as the value of the function.
     @Override
     protected String doExecute(java.util.Map<String, Object> requestContext) {
-        String propsMapKeyName = "-properties-";
+        String idOrElse = getIdOrElse();  //using the non computed version of idOrElse
+        String propsMapKeyName = idOrElse == null? "-properties-": idOrElse;
         String src = (String) requestContext.get("src");
         String propsStream = (String) requestContext.get("stream");
         String propsStreamDelimiter = (String) requestContext.get("stream-delimiter");

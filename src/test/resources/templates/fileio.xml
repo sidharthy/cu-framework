@@ -19,7 +19,7 @@
        </using>
        <init>
          <set attribute="input-file-stream" in="IO-MAP" createMapIfMissing="true">
-           <valueof key="-file-io-result-.result">
+           <valueof key="-file-io-result-.input-file">
              <internal-map/>
            </valueof>
          </set>
@@ -41,7 +41,7 @@
        </using>
        <init>
          <set attribute="output-file-stream" in="IO-MAP" createMapIfMissing="true">
-           <valueof key="-file-io-result-.result">
+           <valueof key="-file-io-result-.output-file">
              <internal-map/>
            </valueof>
          </set>
@@ -72,7 +72,7 @@
      </break>
      <headless-executable-group>
        <init>
-         <fileio id="input-file">
+         <fileio id="read-file">
            <using>
              <valueof id="stream" key="input-file-stream">
                <map name="IO-MAP"/>
@@ -81,12 +81,12 @@
            </using>
            <init>
              <set attribute="line-read" in="IO-MAP" createMapIfMissing="true" outputNullValue="true">
-               <valueof key="-file-io-result-.result">
+               <valueof key="-file-io-result-.read-file">
                  <internal-map/>
                </valueof>
              </set>
              <log id="read-line" level="info" target="console">
-               <valueof key="-file-io-result-.result">
+               <valueof key="-file-io-result-.read-file">
                  <internal-map/>
                </valueof>
              </log>
@@ -102,7 +102,7 @@
                  <internal-map/>
                </valueof>
              </log>
-             <fileio id="output-file">
+             <fileio id="write-file">
                <on>
                  <condition expression="^(.*)$">
                    <valueof key="line-read">
@@ -151,7 +151,7 @@
      </finally>
    </loop>
    <finally>
-     <fileio id="input-file">
+     <fileio id="close-input-file">
        <using>
          <valueof id="stream" key="input-file-stream">
            <map name="IO-MAP"/>
@@ -159,7 +159,7 @@
          <valueof id="operation" default="close"/>
        </using>
      </fileio>
-     <fileio id="output-file">
+     <fileio id="close-output-file">
        <using>
          <valueof id="stream" key="output-file-stream">
            <map name="IO-MAP"/>

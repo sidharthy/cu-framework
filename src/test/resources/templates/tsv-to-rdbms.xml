@@ -19,7 +19,7 @@
        </using>
        <init>
          <set attribute="input-file-stream" in="IO-MAP" createMapIfMissing="true">
-           <valueof key="-file-io-result-.result">
+           <valueof key="-file-io-result-.input-file">
              <internal-map/>
            </valueof>
          </set>
@@ -53,7 +53,7 @@
            </valueof>
          </log>
          <set attribute="rdbms-connection" in="IO-MAP" createMapIfMissing="true">
-           <valueof key="-rdbms-io-result-.result">
+           <valueof key="-rdbms-io-result-.rdbms-connection">
              <internal-map/>
            </valueof>
            <on>
@@ -91,7 +91,7 @@
      </break>
      <headless-executable-group>
        <init>
-         <fileio id="input-file">
+         <fileio id="read-file">
            <using>
              <valueof id="stream" key="input-file-stream">
                <map name="IO-MAP"/>
@@ -100,12 +100,12 @@
            </using>
            <init>
              <set attribute="line-read" in="IO-MAP" createMapIfMissing="true" outputNullValue="true">
-               <valueof key="-file-io-result-.result">
+               <valueof key="-file-io-result-.read-file">
                  <internal-map/>
                </valueof>
              </set>
              <log id="read-line" level="info" target="console">
-               <valueof key="-file-io-result-.result">
+               <valueof key="-file-io-result-.read-file">
                  <internal-map/>
                </valueof>
              </log>
@@ -161,7 +161,7 @@
      </finally>
    </loop>
    <finally>
-     <fileio id="input-file">
+     <fileio id="close-input-file">
        <using>
          <valueof id="stream" key="input-file-stream">
            <map name="IO-MAP"/>
@@ -169,7 +169,7 @@
          <valueof id="operation" default="close"/>
        </using>
      </fileio>
-     <rdbms id="rdbms-connection">
+     <rdbms id="close-rdbms-connection">
        <using>
          <valueof id="closeable" key="rdbms-connection">
            <map name="IO-MAP"/>

@@ -31,7 +31,7 @@
            </valueof>
          </log>
          <set attribute="rdbms-connection" in="IO-MAP" createMapIfMissing="true">
-           <valueof key="-rdbms-io-result-.result">
+           <valueof key="-rdbms-io-result-.rdbms-connection">
              <internal-map/>
            </valueof>
            <on>
@@ -60,7 +60,7 @@
        </using>
        <init>
          <set attribute="output-file-stream" in="IO-MAP" createMapIfMissing="true">
-           <valueof key="-file-io-result-.result">
+           <valueof key="-file-io-result-.output-file">
              <internal-map/>
            </valueof>
          </set>
@@ -101,7 +101,7 @@
          </using>
          <init>
            <set attribute="rdbms-statement-resultset" in="IO-MAP" createMapIfMissing="true">
-             <valueof key="-rdbms-io-result-.result">
+             <valueof key="-rdbms-io-result-.rdbms-statement">
                <internal-map/>
              </valueof>
            </set>
@@ -119,12 +119,12 @@
            </using>
            <init>
              <set attribute="resultset-row" in="IO-MAP" createMapIfMissing="true" outputNullValue="true">
-               <valueof key="-rdbms-io-result-.result">
+               <valueof key="-rdbms-io-result-.rdbms-resultset-row">
                  <internal-map/>
                </valueof>
              </set>
              <log id="read-row" level="info" target="console">
-               <valueof key="-rdbms-io-result-.result">
+               <valueof key="-rdbms-io-result-.rdbms-resultset-row">
                  <internal-map/>
                </valueof>
              </log>
@@ -149,7 +149,7 @@
                  </condition>
                </on>
                <using>
-                 <valueof id="iterable" key="-rdbms-io-result-.result.values">
+                 <valueof id="iterable" key="-rdbms-io-result-.rdbms-resultset-row.values">
                    <internal-map/>
                  </valueof>
                </using>
@@ -158,7 +158,7 @@
                    <select id="item-datatype">
                      <using>
                        <valueof id="dynamic-datatype-accessor">
-                         concat('-rdbms-io-result-.result.datatypes.', 'item-key')
+                         concat('-rdbms-io-result-.rdbms-resultset-row.datatypes.', 'item-key')
                        </valueof>
                      </using>
                      <conditional>
@@ -255,7 +255,7 @@
      </finally>
    </loop>
    <finally>
-     <rdbms id="rdbms-connection">
+     <rdbms id="close-rdbms-connection">
        <using>
          <valueof id="closeable" key="rdbms-connection">
            <map name="IO-MAP"/>
@@ -263,7 +263,7 @@
          <valueof id="operation" default="close"/>
        </using>
      </rdbms>
-     <fileio id="output-file">
+     <fileio id="close-output-file">
        <using>
          <valueof id="stream" key="output-file-stream">
            <map name="IO-MAP"/>

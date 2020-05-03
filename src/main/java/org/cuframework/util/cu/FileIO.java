@@ -67,7 +67,8 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
             return null;
         }
         String resultMapKeyName = "-file-io-result-";
-        String resultKeyName = "result";
+        String idOrElse = getIdOrElse();  //using the non computed version of idOrElse
+        String resultKeyName = idOrElse == null? "result": idOrElse;
         Map<String, Object> resultMap = new HashMap<>();
         try {
             switch(operation.toUpperCase().trim()) {
