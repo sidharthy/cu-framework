@@ -489,13 +489,14 @@ public final class CompilationUnits {
         private static final String ATTRIBUTE_EXTRACTION_EXPRESSION = "extractionExpression";
         private static final String ATTRIBUTE_MATCHER_GROUP = "matcherGroup";
         private static final String ATTRIBUTE_EVAL_IF_NULL = "evalIfNull";
+        private static final String ATTRIBUTE_NODE_EXPRESSION_TOKENIZER = "nodeExpressionTokenizer";
         private static final String ATTRIBUTE_PGVIF = "pgvif";  //call 'postGetValue inside finally'. If this attribute is defined (irrespective of its value)
                                                                 //then the postGetValue would be called inside finally. Doing so may be useful in cases where
                                                                 //the cu performs some critical function and in case of exceptions may be interested in ensuring
                                                                 //actions like logging of the event takes place.
         private static final String[] ATTRIBUTES = {ATTRIBUTE_MESSAGE_FORMAT, ATTRIBUTE_EXTRACTION_EXPRESSION,
                                                     ATTRIBUTE_MATCHER_GROUP, ATTRIBUTE_EVAL_IF_NULL,
-                                                    ATTRIBUTE_PGVIF};
+                                                    ATTRIBUTE_NODE_EXPRESSION_TOKENIZER, ATTRIBUTE_PGVIF};
 
         private static final String TRUE = "true";
 
@@ -728,13 +729,12 @@ public final class CompilationUnits {
             }
 
             /***********************************************************************************************/
-            //added support to return object value using the $ed attribute computation framework
+            //added support to return object values using the $ed attribute computation framework
             //4th May, 20
             if (CompilationUnit.isAttributeValueDynamic(nodeTextExpression.trim())) {
-                return computeAttributeValue(nodeTextExpression.trim(), compilationRuntimeContext,
-                                             false, true);  //the last parameter is set to true to accept null computation values OR
-                                                            //shall we set it to false to return the nodeExpression as is if the
-                                                            //computation results in a null value?
+                return _dollaredEvaluation(compilationRuntimeContext,
+                                           nodeTextExpression.trim(),
+                                           getAttribute(ATTRIBUTE_NODE_EXPRESSION_TOKENIZER));
             }
             /***********************************************************************************************/
 
@@ -768,6 +768,48 @@ public final class CompilationUnits {
             //TODO change evaluation scheme to one using XPathVariableResolver.
             return CompilationUnits.XPATH.evaluate(
                                   nodeTextExpression, getNodeContext(), XPathConstants.STRING);
+        }
+
+        //4th May, 20
+        private Object _dollaredEvaluation(CompilationRuntimeContext compilationRuntimeContext,
+                                           String trimmedNodeTextExpression,
+                                           String expressionTokenizer) throws XPathExpressionException {
+            String tokenizer = expressionTokenizer == null? "\\s+": expressionTokenizer;
+            String[] tokens = Pattern.compile(tokenizer).split(trimmedNodeTextExpression);
+            LinkedList<Object> elements = null;
+            int i = 0;
+            final byte ARRAY = 0, CONCAT = 1;
+            byte INTENT = ARRAY;
+            for (String token: tokens) {
+                Object cav = computeAttributeValue(token, compilationRuntimeContext, false, true);
+                                                        //the last parameter is set to true to accept null computation values
+                                                        //OR shall we set it to false to return the nodeExpression as is if
+                                                        //the computation results in a null value?
+                if (i == 0 && "$$".equals(cav)) {
+                    INTENT = CONCAT;
+                }
+                if (i == 0 && ("$".equals(cav) || "$$".equals(cav))) {
+                    continue;  //we will just treat starting $ or $$, if it exists independently, as just the intent specifier
+                }
+
+                if (elements == null) {
+                    elements = new LinkedList<>();
+                }
+                elements.add(cav);
+            }
+            if (elements != null) {
+                switch(INTENT) {
+                    case ARRAY: {
+                                    return elements.size() == 1? elements.getFirst(): elements.toArray(new Object[0]);
+                                }
+                    case CONCAT:{
+                                    StringBuilder sb = new StringBuilder();
+                                    elements.forEach(sb::append);
+                                    return sb.toString();
+                                }
+                }
+            }
+            return null;
         }
 
         protected abstract Object doGetValue(CompilationRuntimeContext compilationRuntimeContext)
