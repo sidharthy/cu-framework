@@ -256,6 +256,13 @@ public final class CompilationUnits {
          */
         protected String computeAttributeValue(String attributeValue, CompilationRuntimeContext compilationRuntimeContext)
                                                                           throws XPathExpressionException {
+            return (String) computeAttributeValue(attributeValue, compilationRuntimeContext, true, false);
+        }
+
+        protected Object computeAttributeValue(String attributeValue, CompilationRuntimeContext compilationRuntimeContext,
+                                               boolean returnValueAsString, boolean acceptNullComputationValue)
+                                                                          throws XPathExpressionException {
+            Object computedAttributeValue = attributeValue;
             AttributeType attributeType = getAttributeTypeFromValue(attributeValue);
             if (CompilationUnit.isAttributeTypeDynamic(attributeType)) {
                 //ids starting with '$' has special meaning and needs to be resolved to either the value
@@ -267,10 +274,11 @@ public final class CompilationUnits {
                                                          String referencedChildId = attributeValue.substring(2);
                                                          ICompilationUnit childCU = getChild(referencedChildId);
                                                          if (childCU instanceof IEvaluable) {
-                                                             //attributeValue = (String) ((IEvaluable) childCU).getValue(compilationRuntimeContext);
                                                              Object _value = ((IEvaluable) childCU).getValue(compilationRuntimeContext);
                                                              if (_value != null) {
-                                                                 attributeValue = _value.toString();
+                                                                 computedAttributeValue = returnValueAsString? _value.toString(): _value;
+                                                             } else if (acceptNullComputationValue) {
+                                                                 computedAttributeValue = null;
                                                              }
                                                          }
                                                      }
@@ -282,14 +290,16 @@ public final class CompilationUnits {
                                                          Object _value = UtilityFunctions.getValue(attributeValue.substring(1),
                                                                                                   compilationRuntimeContext.getInternalContext());
                                                          if (_value != null) {
-                                                             attributeValue = _value.toString();
+                                                             computedAttributeValue = returnValueAsString? _value.toString(): _value;
+                                                         } else if (acceptNullComputationValue) {
+                                                             computedAttributeValue = null;
                                                          }
                                                      }
                                                      break;
                                                  }
                 }
             }
-            return attributeValue;
+            return computedAttributeValue;
         }
 
         private static AttributeType getAttributeTypeFromValue(String rawAttributeValue) {
@@ -716,6 +726,17 @@ public final class CompilationUnits {
                                            || SKIP_EVALUATION.equals(nodeTextExpression.trim())) {
                 return thisValue;
             }
+
+            /***********************************************************************************************/
+            //added support to return object value using the $ed attribute computation framework
+            //4th May, 20
+            if (CompilationUnit.isAttributeValueDynamic(nodeTextExpression.trim())) {
+                return computeAttributeValue(nodeTextExpression.trim(), compilationRuntimeContext,
+                                             false, true);  //the last parameter is set to true to accept null computation values OR
+                                                            //shall we set it to false to return the nodeExpression as is if the
+                                                            //computation results in a null value?
+            }
+            /***********************************************************************************************/
 
             java.util.Map<String, Object> declaredVariables = compilationRuntimeContext.getInternalContext();
 
