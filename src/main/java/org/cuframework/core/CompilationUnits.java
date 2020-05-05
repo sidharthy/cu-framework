@@ -736,6 +736,7 @@ public final class CompilationUnits {
             //4th May, 20
             if (CompilationUnit.isAttributeValueDynamic(nodeTextExpression.trim())) {
                 return _dollaredEvaluation(compilationRuntimeContext,
+                                           thisValue,
                                            nodeTextExpression.trim(),
                                            getAttribute(ATTRIBUTE_NODE_EXPRESSION_TOKENIZER));
             }
@@ -775,6 +776,7 @@ public final class CompilationUnits {
 
         //4th May, 20
         private Object _dollaredEvaluation(CompilationRuntimeContext compilationRuntimeContext,
+                                           Object thisValue,
                                            String trimmedNodeTextExpression,
                                            String expressionTokenizer) throws XPathExpressionException {
             String tokenizer = expressionTokenizer == null? "\\s+": expressionTokenizer;
@@ -797,6 +799,12 @@ public final class CompilationUnits {
 
                 if (elements == null) {
                     elements = new LinkedList<>();
+                }
+
+                if (cav == null && "$this".equals(token)) {  //even if the token was $this first preference is given to resolving it
+                                                             //using the $ed attribute computation framework. If that returns
+                                                             //a null value it would be assigned the value of self.
+                    cav = thisValue;
                 }
                 elements.add(cav);
             }
