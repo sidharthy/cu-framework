@@ -1645,7 +1645,7 @@ public final class CompilationUnits {
                 Object jsonObj = null;
                 String mapKeyName = getName(compilationRuntimeContext);
                 if (map != null && mapKeyName != null) {
-                    jsonObj = map.get(mapKeyName);
+                    jsonObj = getValue(mapKeyName, map);  //map.get(mapKeyName);  //5th May, 20: Using getValue instead of direct key lookup as it supports key hierarchy traversal.
                 }
 
                 java.util.Map<String, Object> jsonToMap = null;
@@ -1692,7 +1692,7 @@ public final class CompilationUnits {
                 Object jsonObj = null;
                 String mapKeyName = getName(compilationRuntimeContext);
                 if (map != null && mapKeyName != null) {
-                    jsonObj = map.get(mapKeyName);
+                    jsonObj = getValue(mapKeyName, map);  //map.get(mapKeyName);  //5th May, 20: Using getValue instead of direct key lookup as it supports key hierarchy traversal.
                 }
 
                 java.util.Map<String, Object> jsonToMap = null;
