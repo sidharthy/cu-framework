@@ -1,0 +1,7 @@
+# This file contains just some sample values.
+# Change as per your environment.
+
+login-uri = http://localhost/login/
+login-credentials-as-formdata = username=username&password=password
+get-users-uri = http://localhost/api/users
+

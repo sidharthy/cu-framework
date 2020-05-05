@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="http-test.xml">
+  <headless-group id="-test-" selfSerializationPolicy="value" childSerializationPolicy="value">
+    <extends default="../templates/http.xml#http"/>
+    <init>
+      <log id="begin-test-msg" level="info" target="console">
+        <valueof default="Starting http tests..."/>
+      </log>
+    </init>
+    <headless-executable-group id="executioner">
+      <finally>
+        <executable-group id="conditional-assertion">
+          <on>
+            <condition id="1" expression="success">
+              <valueof key="login[0]">
+                <internal-map/>
+              </valueof>
+            </condition>
+          </on>
+          <init>
+            <assert id="if-connection-was-successful-http-client-initialized-inside-using-should-be-accessible" expression="1">
+              <condition id="1" expression=".*">
+                <valueof key="login[1]">
+                  <internal-map/>
+                </valueof>
+              </condition>
+            </assert>
+          </init>
+        </executable-group>
+      </finally>
+    </headless-executable-group>
+    <finally>
+      <log id="end-test-msg" level="info" target="console">
+        <valueof default="Finished http tests."/>
+      </log>
+    </finally>
+  </headless-group>
+  <headless-group id="-test-data-">
+    <headless-group id="1">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="src" default="src/test/resources/files/http-props"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+        <load-properties id="output">
+          <using>
+            <valueof id="stream" default="result=0"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_$execution-result-map">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+  </headless-group>
+</root>

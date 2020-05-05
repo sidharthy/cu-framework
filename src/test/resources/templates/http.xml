@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root name="http.xml">
+<headless-group id="http" selfSerializationPolicy="value">
+ <headless-executable-group id="executioner">
+   <using>
+     <http id="login">
+       $_$execution-endstate $-http-io-result-.login.http-client
+       <using>
+         <valueof id="uri" key="login-uri" default="http://localhost/login">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <select id="headers">
+           <conditional extractionExpression="\t">
+             <valueof>
+               concat('Content-Type', '	', 'application/x-www-form-urlencoded')
+             </valueof>
+           </conditional>
+         </select>
+         <valueof id="method" default="post"/>
+         <valueof id="payload" key="login-credentials-as-formdata" default="username=username&amp;password=password">
+           <map name="CONTEXT-MAP"/>
+         </valueof>
+         <!-- <valueof id="timeout" default="1000"/> -->
+       </using>
+       <init>
+         <log id="http-operation-endstate" level="info" target="console">
+           <valueof key="_$execution-endstate">
+             <internal-map/>
+           </valueof>
+         </log>
+         <log id="http-operation-outcome" level="info" target="console">
+           <valueof key="_$execution-outcome">
+             <internal-map/>
+           </valueof>
+         </log>
+         <log id="http-operation-status-code" level="info" target="console">
+           <valueof key="-http-io-result-.login.response.status-code">
+             <internal-map/>
+           </valueof>
+         </log>
+         <log id="http-operation-response-headers" level="info" target="console">
+           <valueof key="-http-io-result-.login.response.headers">
+             <internal-map/>
+           </valueof>
+         </log>
+         <log id="http-operation-response-body" level="info" target="console">
+           <valueof key="-http-io-result-.login.response.body">
+             <internal-map/>
+           </valueof>
+         </log>
+         <http id="get-api">
+           $-http-io-result-.get-api.http-client
+           <on>
+             <condition expression="success">
+               <valueof key="_$execution-endstate">
+                 <internal-map/>
+               </valueof>
+             </condition>
+           </on>
+           <using>
+             <valueof id="uri" key="get-users-api" default="http://localhost/api/users">
+               <map name="CONTEXT-MAP"/>
+             </valueof>
+             <valueof id="method" default="get"/>
+             <valueof id="http-client" key="-http-io-result-.login.http-client">
+               <internal-map/>
+             </valueof>
+           </using>
+           <init>
+             <log id="http-operation-endstate" level="info" target="console">
+               <valueof key="_$execution-endstate">
+                 <internal-map/>
+               </valueof>
+             </log>
+             <log id="http-operation-outcome" level="info" target="console">
+               <valueof key="_$execution-outcome">
+                 <internal-map/>
+               </valueof>
+             </log>
+             <log id="http-operation-status-code" level="info" target="console">
+               <valueof key="-http-io-result-.get-api.response.status-code">
+                 <internal-map/>
+               </valueof>
+             </log>
+             <log id="http-operation-response-headers" level="info" target="console">
+               <valueof key="-http-io-result-.get-api.response.headers">
+                 <internal-map/>
+               </valueof>
+             </log>
+             <log id="http-operation-response-body" level="info" target="console">
+               <valueof key="-http-io-result-.get-api.response.body">
+                 <internal-map/>
+               </valueof>
+             </log>
+           </init>
+         </http>
+       </init>
+     </http>
+   </using>
+ </headless-executable-group>
+</headless-group>
+</root>
