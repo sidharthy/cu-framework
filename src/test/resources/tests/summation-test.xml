@@ -8,7 +8,7 @@
       </log>
       <set attribute="this-value" in="tmp-map" createMapIfMissing="true">
         <valueof key="--test--value">
-          concat('{', "this", '}')
+          concat('{', 'this', '}')
           <internal-map/>
         </valueof>
       </set>

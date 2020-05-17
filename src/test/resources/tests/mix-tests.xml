@@ -226,7 +226,7 @@
        </assert>
        <set attribute="this-value" in="this-value-tmp-map" createMapIfMissing="true">
          <valueof key="-sub-calculator-value">
-           concat('{', "this", '}')
+           concat('{', 'this', '}')
            <internal-map/>
          </valueof>
        </set>

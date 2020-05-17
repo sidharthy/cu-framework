@@ -78,10 +78,11 @@ class JSONSerializerForGroupCU implements ICompilationUnitSerializer {
         StringBuilder strBuilder = new StringBuilder();
         String jsonObjKey = groupToSerialize.getIdOrElse(compilationRuntimeContext);  //fall back to name if no id is defined.
                                                                                       //attempting to get the computed value of idOrElse
+        String QUOTATION_MARK = groupToSerialize.getQuotationMarks();
         if (serializeSelfKey && jsonObjKey != null && !"".equals(jsonObjKey)) {
-            strBuilder.append("'");
+            strBuilder.append(QUOTATION_MARK);
             strBuilder.append(jsonObjKey);
-            strBuilder.append("'");
+            strBuilder.append(QUOTATION_MARK);
         }
 
         if (selfSerializationPolicy == SerializationPolicy.ONLYKEY) {
@@ -119,6 +120,7 @@ class JSONSerializerForGroupCU implements ICompilationUnitSerializer {
         if (childSerializationPolicy == SerializationPolicy.NONE) {
             return;
         }
+        String QUOTATION_MARK = groupToSerialize.getQuotationMarks();
         CompilationUnits.Set[] sets = groupToSerialize.getChildren(CompilationUnits.Set.class);
         boolean hasSetAtleastOneValue = false;
         for (int i = 0; i < sets.length; i++) {
@@ -139,29 +141,29 @@ class JSONSerializerForGroupCU implements ICompilationUnitSerializer {
             hasSetThisValue = serializeKey;  //if the key is to be serialized then some output will definitely
                                              //be generated
             if (serializeKey) {
-                strBuilder.append("'");
+                strBuilder.append(QUOTATION_MARK);
                 strBuilder.append(attributeToSet);
             }
 
             if (childSerializationPolicy == SerializationPolicy.ONLYKEY) {
-                strBuilder.append("'");  //let's close the single quotes enclosing the key
+                strBuilder.append(QUOTATION_MARK);  //let's close the quotes enclosing the key
             }
 
             if (childSerializationPolicy == SerializationPolicy.ALL) {
                 //key would have already been serialized. Let's add necessary separators (colon or equals sign)
                 //before we attempt serialization of value.
-                strBuilder.append(isGroupTypeList ? "=" : "':");
+                strBuilder.append(isGroupTypeList ? "=" : QUOTATION_MARK + ":");
             }
 
             if (serializeValue) {
                 if (value != null) {
                     strBuilder.append(isGroupTypeList ?
-                                      (!serializeKey ? "'" : "") :  //if no key was serialized then also we need
-                                                                    //to start the value with a quote or else the
-                                                                    //generated json would be malformed
-                                      "'");
+                                      (!serializeKey ? QUOTATION_MARK : "") :  //if no key was serialized then also we need
+                                                                               //to start the value with a quote or else the
+                                                                               //generated json would be malformed
+                                      QUOTATION_MARK);
                     strBuilder.append(value);
-                    strBuilder.append("'");
+                    strBuilder.append(QUOTATION_MARK);
 
                     hasSetThisValue = true;  //some output is definitely generated
 

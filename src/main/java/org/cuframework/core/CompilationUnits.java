@@ -1830,16 +1830,21 @@ public final class CompilationUnits {
             }
         }
 
+        private static final String DEFAULT_SERIALIZATION_QUOTATION_MARKS = "\"";  //using double quotes by default
+
         private static final String ATTRIBUTE_NAME = "name";
         private static final String ATTRIBUTE_TYPE = "type";
         private static final String ATTRIBUTE_CUSTOM_BUILDER = "customBuilder";
         private static final String ATTRIBUTE_SELF_SERIALIZATION_POLICY = "selfSerializationPolicy";
         private static final String ATTRIBUTE_CHILD_SERIALIZATION_POLICY = "childSerializationPolicy";
-        private static final String ATTRIBUTE_ESCAPE_QUOTES = "escapeQuotes";  //true value indicates that the single quotes needs to be escaped
+        private static final String ATTRIBUTE_SERIALIZATION_QUOTES = "serializationQuotes";  //double quote, single quote, no quote (empty string) or any other char
+                                                                                             //combination that is to be used to wrap keys/values during serialization.
+        private static final String ATTRIBUTE_ESCAPE_QUOTES = "escapeQuotes";  //true value indicates that the quotation marks needs to be escaped
                                                                                //from inside the final serialized value of the group.
         private static final String[] ATTRIBUTES = {ATTRIBUTE_NAME, ATTRIBUTE_TYPE, ATTRIBUTE_CUSTOM_BUILDER,
                                                     ATTRIBUTE_SELF_SERIALIZATION_POLICY,
                                                     ATTRIBUTE_CHILD_SERIALIZATION_POLICY,
+                                                    ATTRIBUTE_SERIALIZATION_QUOTES,
                                                     ATTRIBUTE_ESCAPE_QUOTES};
 
         //private static final String CHILDREN_XPATH = "./set | ./group";
@@ -2448,6 +2453,15 @@ public final class CompilationUnits {
         /************** End - pre and post processing methods of getValue(...) **************/
         /************************************************************************************/
 
+        public String getQuotationMarks() {
+            String quotationMarks = getAttribute(ATTRIBUTE_SERIALIZATION_QUOTES);
+            if (quotationMarks == null) {
+                String SYS_PROP_SERIALIZATION_QUOTATION_MARKS = "cu.group.serialization.quotation.marks";
+                quotationMarks = System.getProperty(SYS_PROP_SERIALIZATION_QUOTATION_MARKS);
+            }
+            return quotationMarks != null? quotationMarks: DEFAULT_SERIALIZATION_QUOTATION_MARKS;
+        }
+
         public Object build(CompilationRuntimeContext compilationRuntimeContext,
                                     ReturnType returnType) throws XPathExpressionException {
             if (returnType == ReturnType.JSON) {
@@ -2475,7 +2489,13 @@ public final class CompilationUnits {
                     value = CompilationUnitsSerializationFactory.getGroupSerializer(
                                 CompilationUnitsSerializationFactory.SerializerType.MAP).
                                                    serialize(compilationRuntimeContext, this);
-                    return escapeQuotes && value instanceof String? ((String) value).replaceAll("'", "\\\\\\\\'"): value;
+                    String QUOTATION_MARKS = getQuotationMarks();
+                    if (QUOTATION_MARKS != null) {
+                        QUOTATION_MARKS = QUOTATION_MARKS.trim();
+                    }
+                    return escapeQuotes && QUOTATION_MARKS != null && value instanceof String &&
+                                   ("\"".equals(QUOTATION_MARKS) || "'".equals(QUOTATION_MARKS))?
+                                          ((String) value).replaceAll(QUOTATION_MARKS, "\\\\\\\\" + QUOTATION_MARKS): value;
                 } finally {
                     //doFinally(compilationRuntimeContext);
                     postGetValue(value, compilationRuntimeContext);
@@ -2524,7 +2544,13 @@ public final class CompilationUnits {
             Object value = CompilationUnitsSerializationFactory.getGroupSerializer(
                                 CompilationUnitsSerializationFactory.SerializerType.JSON).
                                                            serialize(compilationRuntimeContext, this);
-            return escapeQuotes && value instanceof String? ((String) value).replaceAll("'", "\\\\\\\\'"): value;
+            String QUOTATION_MARKS = getQuotationMarks();
+            if (QUOTATION_MARKS != null) {
+                QUOTATION_MARKS = QUOTATION_MARKS.trim();
+            }
+            return escapeQuotes && QUOTATION_MARKS != null && value instanceof String &&
+                           ("\"".equals(QUOTATION_MARKS) || "'".equals(QUOTATION_MARKS))?
+                                  ((String) value).replaceAll(QUOTATION_MARKS, "\\\\\\\\" + QUOTATION_MARKS): value;
         }
 
         /* For group we are not interested in performing any transformations as such operations don't really make
