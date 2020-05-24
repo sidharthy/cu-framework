@@ -2379,7 +2379,7 @@ public final class CompilationUnits {
 
         public static enum ReturnType {
             JSON,
-            TEST_MAP,
+            MAP,
             OBJECT;
         }
 
@@ -2467,7 +2467,7 @@ public final class CompilationUnits {
             if (returnType == ReturnType.JSON) {
                 //return doGetValue(compilationRuntimeContext);
                 return getValue(compilationRuntimeContext);
-            } else if (returnType == ReturnType.TEST_MAP) {
+            } else if (returnType == ReturnType.MAP || returnType == ReturnType.OBJECT) {
                 /* Commented this block in favour of the satisfies(...) and _noValue(...) methods.
 
                 if (on != null && !on.satisfies(compilationRuntimeContext)) {
@@ -2487,7 +2487,7 @@ public final class CompilationUnits {
                 Object value = null;
                 try {
                     value = CompilationUnitsSerializationFactory.getGroupSerializer(
-                                CompilationUnitsSerializationFactory.SerializerType.MAP).
+                                CompilationUnitsSerializationFactory.SerializerType.OBJECT).
                                                    serialize(compilationRuntimeContext, this);
                     String QUOTATION_MARKS = getQuotationMarks();
                     if (QUOTATION_MARKS != null) {

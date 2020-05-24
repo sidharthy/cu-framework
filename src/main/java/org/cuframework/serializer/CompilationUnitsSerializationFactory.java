@@ -36,7 +36,8 @@ package org.cuframework.serializer;
 public final class CompilationUnitsSerializationFactory {
     public static enum SerializerType {
         JSON,
-        MAP;
+        MAP,
+        OBJECT;
     };
 
     private CompilationUnitsSerializationFactory() {
@@ -44,7 +45,8 @@ public final class CompilationUnitsSerializationFactory {
 
     public static ICompilationUnitSerializer getGroupSerializer(SerializerType type) {
         switch(type) {
-            case MAP : return new TestMapSerializerForGroupCU();
+            case MAP :
+            case OBJECT : return new ObjectSerializerForGroupCU();
             case JSON :
             default : return new JSONSerializerForGroupCU();
         }
