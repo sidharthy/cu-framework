@@ -139,7 +139,7 @@ public class RdbmsIO extends HeadlessExecutableGroup implements IExecutable {
             ResultSetMetaData rsmd = resultSet.getMetaData();
             int colCount = rsmd.getColumnCount();
             for (int i = 1; i <= colCount; i++) {
-                String colName = rsmd.getColumnName(i);
+                String colName = rsmd.getColumnLabel(i);  //using getColumnLabel as it supports alias name(s)
                 String colDataType = rsmd.getColumnTypeName(i);
                 Object colValue = resultSet.getObject(i);
                 returnMap.get(COLUMN_VALUES).put(colName, colValue);
