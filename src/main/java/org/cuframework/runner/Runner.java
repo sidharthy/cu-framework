@@ -41,6 +41,7 @@ import org.cuframework.core.CompilationRuntimeContext;
 import org.cuframework.core.CompilationUnits;
 import org.cuframework.core.CompilationUnits.ICompilationUnit;
 import org.cuframework.core.CompilationUnits.Group;
+import org.cuframework.core.CompiledTemplate;
 import org.cuframework.core.CompiledTemplatesRegistry;
 import org.cuframework.util.logging.LogManager;
 
@@ -148,11 +149,6 @@ public class Runner {
                                                        cuFile,
                                                        runnerContext.get(CU_DEPENDENCIES_GROUP_ID));
 
-        //process and initialize template object inside registry
-        CompiledTemplatesRegistry.getInstance().
-                              processExtensions(CompiledTemplatesRegistry.getInstance().getCompiledTemplate(cuFile),
-                                                compilationRuntimeContext);
-
         //initialize the context data maps
         compilationRuntimeContext = initializeContextDataMaps(compilationRuntimeContext,
                                                        cuFile,
@@ -221,7 +217,15 @@ public class Runner {
         CompilationRuntimeContext compilationRuntimeContext = new CompilationRuntimeContext();
         compilationRuntimeContext.setExternalContext(mapOfMaps);
 
-        Group compilationUnit = getCompiledCU(cuFile, cuId, Group.class);
+        //process extensions and initialize the template object
+        //I opted to process the extensions this late and not inside the run method because here the context
+        //map has been updated with the run data and that also gives us the opportunity to rightly process any
+        //conditional 'extends' before starting the actual cu execution.
+        CompiledTemplate mct = CompiledTemplatesRegistry.getInstance().
+                                      processExtensions(CompiledTemplatesRegistry.getInstance().getCompiledTemplate(cuFile),
+                                                compilationRuntimeContext);
+
+        Group compilationUnit = getCompiledCU(mct, new String[]{cuId}, Group.class);
 
         return compilationUnit.build(compilationRuntimeContext, Group.ReturnType.JSON);
     }
@@ -253,7 +257,11 @@ public class Runner {
 
     private <T extends ICompilationUnit> T getCompiledCU(String cuXmlFile, String id, Class<T> cuType)
                                                         throws FileNotFoundException, XPathExpressionException {
-        return CompiledTemplatesRegistry.getInstance().getCompilationUnit(cuXmlFile + "#" + id,
-                                                                           cuType);
+        return CompiledTemplatesRegistry.getInstance().getCompilationUnit(cuXmlFile + "#" + id, cuType);
+    }
+
+    private <T extends ICompilationUnit> T getCompiledCU(CompiledTemplate mct, String[] idTrail, Class<T> cuType)
+                                                           throws FileNotFoundException, XPathExpressionException {
+        return CompiledTemplatesRegistry.getInstance().getCompilationUnit(mct, idTrail, cuType);
     }
 }
