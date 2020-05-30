@@ -2221,8 +2221,9 @@ public final class CompilationUnits {
                                                             extendedUnit.areExtensionsMarkedAsProcessed();
             }
             canMarkExtensionsAsProcessed = canMarkExtensionsAsProcessed &
-                                                   extendedUnit.doExtendImmediateChildren(compilationRuntimeContext, mctr);  //Changed from doExtendImmediateChildren(...) to
-                                                                                                                             //extendedUnit.doExtendImmediateChildren(...)
+                                                   extendedUnit.doExtendImmediateChildren(compilationRuntimeContext, mctr) &  //Changed from doExtendImmediateChildren(...) to
+                                                                                                                              //extendedUnit.doExtendImmediateChildren(...)
+                                                          extendedUnit.doExtendLifecycleBlocks(compilationRuntimeContext, mctr);  //added on 28th May, 20
             extendedUnit.markExtensionsAsProcessed(canMarkExtensionsAsProcessed);
             if (!canMarkExtensionsAsProcessed) {
                 markExtensionsAsProcessed(false);
@@ -2250,6 +2251,53 @@ public final class CompilationUnits {
             }
             return allGroupsCacheable;
         }
+
+        /****************************************** 28th May 20 ******************************************/
+        /******** Added support for extending eligible cunits present inside the lifecycle blocks ********/
+        /************* using, init and finally blocks are considered as the lifecycle blocks *************/
+        /*************************************************************************************************/
+        protected boolean doExtendLifecycleBlocks(CompilationRuntimeContext compilationRuntimeContext,
+                                                  CompiledTemplatesRegistry mctr) throws XPathExpressionException {
+            boolean allUnitsCacheable = true;
+            if (init != null) {
+                allUnitsCacheable &= doExtendLifecycleBlockUnits((List<ICompilationUnit>) (List<? extends ICompilationUnit>) init.getExecutables(),
+                                                                 compilationRuntimeContext,
+                                                                 mctr);
+            }
+            if (finallyy != null) {
+                allUnitsCacheable &= doExtendLifecycleBlockUnits((List<ICompilationUnit>) (List<? extends ICompilationUnit>) finallyy.getExecutables(),
+                                                                 compilationRuntimeContext,
+                                                                 mctr);
+            }
+            return allUnitsCacheable;
+        }
+
+        protected boolean doExtendLifecycleBlockUnits(List<ICompilationUnit> cus,
+                                                      CompilationRuntimeContext compilationRuntimeContext,
+                                                      CompiledTemplatesRegistry mctr) throws XPathExpressionException {
+            boolean allUnitsCacheable = true;
+            java.util.Map<ICompilationUnit, ICompilationUnit> extendedUnitsMap = new HashMap<>();
+            if (cus != null) {
+                for (ICompilationUnit cunit : cus) {
+                    if (cunit instanceof IExtensible) {
+                        IExtensible extendedUnit = (IExtensible) ((IExtensible) cunit).extend(compilationRuntimeContext, mctr);
+                        if (extendedUnit.areExtensionsMarkedAsProcessed()) {
+                            extendedUnitsMap.put(cunit, extendedUnit);
+                        }
+                        allUnitsCacheable = allUnitsCacheable & extendedUnit.areExtensionsMarkedAsProcessed();
+                    }
+                }
+            }
+            for (Entry<ICompilationUnit, ICompilationUnit> entry : extendedUnitsMap.entrySet()) {
+                int index = cus.indexOf(entry.getKey());
+                cus.add(index, entry.getValue());
+                cus.remove(index + 1);
+            }
+            return allUnitsCacheable;
+        }
+        /*************************************************************************************************/
+        /******************************** end - lifecycle blocks extension *******************************/
+        /*************************************************************************************************/
 
         private static Group doExtendFromBase(Group superUnit,
                                               Group baseUnit,
@@ -3794,6 +3842,18 @@ public final class CompilationUnits {
                     }
                 }
             }
+        }
+
+        @Override
+        protected boolean doExtendLifecycleBlocks(CompilationRuntimeContext compilationRuntimeContext,
+                                                  CompiledTemplatesRegistry mctr) throws XPathExpressionException {
+            boolean allUnitsCacheable = super.doExtendLifecycleBlocks(compilationRuntimeContext, mctr);
+            if (using != null) {
+                allUnitsCacheable &= doExtendLifecycleBlockUnits((List<ICompilationUnit>) (List<? extends ICompilationUnit>) using.getEvaluables(),
+                                                                 compilationRuntimeContext,
+                                                                 mctr);
+            }
+            return allUnitsCacheable;
         }
         /*********** End - Inheritance related methods ***********/
 
