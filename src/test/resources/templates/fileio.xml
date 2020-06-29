@@ -1,6 +1,148 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <root name="fileio.xml">
 <headless-group id="fileio" selfSerializationPolicy="value">
+ <headless-executable-group id="fs-commands">
+   <init>
+     <fileio id="inspect-folder">
+       <using>
+         <select id="path">
+           concat('user-home', '/Desktop/')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
+         <!-- <valueof id="type" default="(.*)\.class"/> -->
+         <valueof id="operation" default="ls"/>
+       </using>
+       <init>
+         <log id="inspecting-folder" level="info" target="console">
+           <valueof id="num-elements" key="-file-io-result-.inspect-folder[]">
+             <internal-map/>
+           </valueof>
+           <typeof id="type-of-result-object">
+             <valueof key="-file-io-result-.inspect-folder">
+               <internal-map/>
+             </valueof>
+           </typeof>
+           <valueof id="result" key="-file-io-result-.inspect-folder">
+             <internal-map/>
+           </valueof>
+         </log>
+       </init>
+     </fileio>
+     <fileio id="cp-command">
+       <using>
+         <select id="path">
+           concat('user-home', '/Desktop/test.class')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
+         <select id="target">
+           concat('user-home', '/Desktop/test2.class')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
+         <valueof id="operation" default="cp"/>
+       </using>
+       <init>
+         <log id="cp-command" level="info" target="console">
+           <valueof id="endstate" key="_$execution-endstate">
+             <internal-map/>
+           </valueof>
+           <valueof id="result" key="-file-io-result-.cp-command">
+             <internal-map/>
+           </valueof>
+         </log>
+       </init>
+     </fileio>
+     <fileio id="mv-command">
+       <using>
+         <select id="path">
+           concat('user-home', '/Desktop/test2.class')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
+         <select id="target">
+           concat('user-home', '/Desktop/test3.class')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
+         <valueof id="operation" default="mv"/>
+       </using>
+       <init>
+         <log id="mv-command" level="info" target="console">
+           <valueof id="endstate" key="_$execution-endstate">
+             <internal-map/>
+           </valueof>
+           <valueof id="result" key="-file-io-result-.mv-command">
+             <internal-map/>
+           </valueof>
+         </log>
+       </init>
+     </fileio>
+     <fileio id="rename-command">
+       <using>
+         <select id="path">
+           concat('user-home', '/Desktop/test3.class')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
+         <valueof id="target">'test4.class'</valueof>
+         <valueof id="operation" default="rename"/>
+       </using>
+       <init>
+         <log id="rename-command" level="info" target="console">
+           <valueof id="endstate" key="_$execution-endstate">
+             <internal-map/>
+           </valueof>
+           <valueof id="result" key="-file-io-result-.rename-command">
+             <internal-map/>
+           </valueof>
+         </log>
+       </init>
+     </fileio>
+     <fileio id="del-command">
+       <using>
+         <select id="path">
+           concat('user-home', '/Desktop/test4.class')
+           <using>
+             <valueof id="user-home" key="user.home">
+               <map name="SYSTEM-MAP" keyDelimiter=";"/>
+             </valueof>
+           </using>
+         </select>
+         <valueof id="operation" default="del"/>
+       </using>
+       <init>
+         <log id="del-command" level="info" target="console">
+           <valueof id="endstate" key="_$execution-endstate">
+             <internal-map/>
+           </valueof>
+           <valueof id="result" key="-file-io-result-.del-command">
+             <internal-map/>
+           </valueof>
+         </log>
+       </init>
+     </fileio>
+   </init>
+ </headless-executable-group>
  <headless-executable-group>
    <using>
      <fileio id="input-file">
