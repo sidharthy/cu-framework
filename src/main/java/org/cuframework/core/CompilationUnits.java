@@ -640,7 +640,8 @@ public final class CompilationUnits {
             boolean callPostGetValueInsideFinally = isCallPostGetValueInsideFinally();
             try {
                 preGetValue(compilationRuntimeContext);  //getValue's pre processing
-                Object value = getFormattedValue(getExtractedGroupValue(doGetValue(compilationRuntimeContext)));
+                Object value = getFormattedValue(getExtractedGroupValue(doGetValue(compilationRuntimeContext)),
+                                                 compilationRuntimeContext);
                 //get the evaluated value
                 value = (value == null && !evalIfNull) ?
                                                  value :
@@ -679,13 +680,25 @@ public final class CompilationUnits {
             }
         }
 
+        //computed version to return message format value
+        protected String getMessageFormat(CompilationRuntimeContext compilationRuntimeContext) {
+            String msgFormat = null;
+            try {
+                //attempt computation
+                msgFormat = getAttribute(ATTRIBUTE_MESSAGE_FORMAT, compilationRuntimeContext);  //invoking the computed version
+            } catch(XPathExpressionException xpee) {
+                msgFormat = getAttribute(ATTRIBUTE_MESSAGE_FORMAT);  //return the uncomputed value as fallback.
+            }
+            return msgFormat;
+        }
+
         //if the message format property is specified then the value would be processed using the MessageFormat class.
         //subclasses to override if needed.
-        protected Object getFormattedValue(Object value) {
+        protected Object getFormattedValue(Object value, CompilationRuntimeContext compilationRuntimeContext) {
             if (value == null) {
                 return null;
             }
-            String msgFormat = getAttribute(ATTRIBUTE_MESSAGE_FORMAT);
+            String msgFormat = getMessageFormat(compilationRuntimeContext);  //using the computed version
             msgFormat = msgFormat == null || "".equals(msgFormat) ? null : msgFormat;
             if (msgFormat == null) {
                 return value;  //no message formatter specified. Return the value as is.
