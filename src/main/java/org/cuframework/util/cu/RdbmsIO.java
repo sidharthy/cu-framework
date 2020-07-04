@@ -57,6 +57,7 @@ public class RdbmsIO extends HeadlessExecutableGroup implements IExecutable {
     private static final String PARAM_CONNECTION = "connection";  //connection object to use to execute statements
     private static final String PARAM_QUERY = "query";  //query to execute
     private static final String PARAM_QUERY_TYPE = "query-type";  //e.g. select, insert, update, delete
+    private static final String PARAM_RUN_AS_TRANSACTION = "transaction";  //true or false
     private static final String PARAM_RESULT_SET = "result-set";  //query result set
     private static final String PARAM_CLOSEABLE = "closeable";  //an object that can be closed e.g. connection, statement, result set
 
@@ -104,21 +105,107 @@ public class RdbmsIO extends HeadlessExecutableGroup implements IExecutable {
 
     private Object executeStatement(Map<String, Object> requestContext) throws SQLException {
         Connection connection = (Connection) requestContext.get(PARAM_CONNECTION);
-        String query = (String) requestContext.get(PARAM_QUERY);
+        Object query = requestContext.get(PARAM_QUERY);
         String queryType = (String) requestContext.get(PARAM_QUERY_TYPE);
-        if (connection == null || query == null || queryType == null) {
+        if (connection == null || query == null) {
             return null;
         }
 
+        if (!(query instanceof String || query.getClass().isArray())) {
+            throw new IllegalArgumentException("Query object should be a String or an array object. Instead found: " + query.getClass().getName());
+        }
+
+        boolean isBatch = query.getClass().isArray();
+        boolean asTransaction = isBatch &&  //we would attempt to run as a transaction only if a batch of queries is provided.
+                                requestContext.get(PARAM_RUN_AS_TRANSACTION) != null?
+                                                "true".equalsIgnoreCase(requestContext.get(PARAM_RUN_AS_TRANSACTION).toString()):
+                                                false;
+
+        Object result = null;
+        if (!isBatch) {
+            result = executeSingleQuery(connection, (String) query, queryType);
+        } else {
+            result = executeQueryBatch(connection, (Object[]) query, asTransaction);
+        }
+        return result;
+    }
+
+    private Object executeSingleQuery(Connection connection, String query, String queryType) throws SQLException {
+        final String GENERIC = "_GENERIC";
+        if (queryType == null) {
+            queryType = GENERIC;
+        }
+
         Statement statement = connection.createStatement();
+        Object result = null;
 
         switch(queryType.toUpperCase().trim()) {
-            case "SELECT": return statement.executeQuery(query);  //returns a ResultSet object
+            case "SELECT": result = statement.executeQuery(query); break;  //result will be a ResultSet object
             case "INSERT":
             case "UPDATE":
-            case "DELETE": return statement.executeUpdate(query);  //returns an int value
+            case "DELETE": result = statement.executeUpdate(query); break;  //result will be an int value
+            case GENERIC: {
+                              boolean isResultSet = statement.execute(query);  //in rare cases this may return multiple result sets
+                              if (isResultSet) {
+                                  result = statement.getResultSet();  //we will return only the first result set
+                              } else {
+                                  result = statement.getUpdateCount();
+                              }
+                              break;
+                          }
             default: throw new UnsupportedOperationException("Unsupported query type: " + queryType);
         }
+        return result;
+    }
+
+    private Object executeQueryBatch(Connection connection, Object[] queries, boolean asTransaction) throws SQLException {
+        if (queries.length == 0) {
+            return null;
+        }
+
+        Object result = null;
+        boolean savedAutoCommitStatus = connection.getAutoCommit();
+
+        if (asTransaction) {
+            connection.setAutoCommit(false);
+        }
+        try {
+            Statement statement = connection.createStatement();
+            boolean atleastOneQueryFound = false;
+            for (Object query: queries) {
+                if (query instanceof String) {
+                    atleastOneQueryFound = true;
+                    statement.addBatch((String) query);
+                }
+            }
+            if (atleastOneQueryFound) {
+                int[] updateCounts = statement.executeBatch();
+                if (asTransaction) {
+                    //if it was a transaction then auto commit would have been disabled. We now need to explicitly commit.
+                    connection.commit();
+                }
+                result = updateCounts;
+            }
+        } catch(SQLException sqle) {
+            try {
+                if (asTransaction) {
+                    //if it was a transaction then auto commit would have been disabled. We now need to rollback as something went wrong.
+                    connection.rollback();
+                }
+            } catch (SQLException sqle2) {
+                //ignore. log?
+            }
+            throw sqle;
+        } finally {
+            try {
+                if (asTransaction) {
+                    connection.setAutoCommit(savedAutoCommitStatus);  //revert to the original auto commit status
+                }
+            } catch(SQLException sqle) {
+                //ignore. log?
+            }
+        }
+        return result;
     }
 
     private Object read(Map<String, Object> requestContext) throws SQLException {
