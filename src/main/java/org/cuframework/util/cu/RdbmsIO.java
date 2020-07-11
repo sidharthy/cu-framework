@@ -29,6 +29,7 @@
 package org.cuframework.util.cu;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import java.sql.Connection;
@@ -221,8 +222,8 @@ public class RdbmsIO extends HeadlessExecutableGroup implements IExecutable {
         Map<String, Map<String, Object>> returnMap = null;
         if (resultSet.next()) {
             returnMap = new HashMap<>();
-            returnMap.put(COLUMN_VALUES, new HashMap<String, Object>());
-            returnMap.put(COLUMN_DATATYPES, new HashMap<String, Object>());
+            returnMap.put(COLUMN_VALUES, new LinkedHashMap<String, Object>());
+            returnMap.put(COLUMN_DATATYPES, new LinkedHashMap<String, Object>());
             ResultSetMetaData rsmd = resultSet.getMetaData();
             int colCount = rsmd.getColumnCount();
             for (int i = 1; i <= colCount; i++) {
