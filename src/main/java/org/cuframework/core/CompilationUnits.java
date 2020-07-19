@@ -29,6 +29,8 @@
 package org.cuframework.core;
 
 import org.cuframework.MapOfMaps;
+import org.cuframework.func.FunctionResolver;
+import org.cuframework.func.IFunction;
 import org.cuframework.serializer.CompilationUnitsSerializationFactory;
 import org.cuframework.util.cu.FileIO;
 import org.cuframework.util.cu.HttpIO;
@@ -796,17 +798,21 @@ public final class CompilationUnits {
             String[] tokens = Pattern.compile(tokenizer).split(trimmedNodeTextExpression);
             LinkedList<Object> elements = null;
             int i = 0;
-            final byte ARRAY = 0, CONCAT = 1;
+            final byte ARRAY = 0, CONCAT = 1, FUNCTION = 2;
             byte INTENT = ARRAY;
             for (String token: tokens) {
                 Object cav = computeAttributeValue(token, compilationRuntimeContext, false, true);
                                                         //the last parameter is set to true to accept null computation values
                                                         //OR shall we set it to false to return the nodeExpression as is if
                                                         //the computation results in a null value?
-                if (i == 0 && "$$".equals(cav)) {
-                    INTENT = CONCAT;
+                if (i == 0) {
+                    if ("$$$".equals(cav)) {
+                        INTENT = FUNCTION;
+                    } else if ("$$".equals(cav)) {
+                        INTENT = CONCAT;
+                    }
                 }
-                if (i == 0 && ("$".equals(cav) || "$$".equals(cav))) {
+                if (i == 0 && ("$".equals(cav) || "$$".equals(cav) || "$$$".equals(cav))) {
                     continue;  //we will just treat starting $ or $$, if it exists independently, as just the intent specifier
                 }
 
@@ -831,6 +837,17 @@ public final class CompilationUnits {
                                     elements.forEach(sb::append);
                                     return sb.toString();
                                 }
+                    case FUNCTION:{
+                                      Object[] objs = elements.toArray(new Object[0]);
+                                      Object funcId = objs.length > 0? objs[0]: null;
+                                      Object[] funcParams = objs.length > 1? Arrays.copyOfRange(objs, 1, objs.length): new Object[0];
+                                      IFunction func = FunctionResolver.resolve(funcId);
+                                      try {
+                                          return func == null? null: func.invoke(funcParams, compilationRuntimeContext);
+                                      } catch (Exception e) {
+                                          throw new RuntimeException(e);
+                                      }
+                                  }
                 }
             }
             return null;
@@ -1332,7 +1349,8 @@ public final class CompilationUnits {
                                   satisfiesAtLeastOne;
 
             if (abortIfNotSatisfy && !satisfiesAtLeastOne) {
-                throw new RuntimeException("No available conditions satisfied.");
+                throw new NoConditionsSatisfiedException(getIdOrElse(),  //let's just use the uncomputed version of getIdOrElse
+                                                         "No available conditions satisfied.");
             }
             return value;
         }
@@ -2928,7 +2946,8 @@ public final class CompilationUnits {
                 //actually failed then introduce a new boolean flag and set its value to the OR of all
                 //conditionals that were evaluated before breaking out of the above loop and then use the value
                 //of that boolean flag to decide whether to enter this block or not.
-                throw new RuntimeException("No available conditions satisfied.");
+                throw new NoConditionsSatisfiedException(getIdOrElse(),  //let's just use the uncomputed version of getIdOrElse
+                                                         "No available conditions satisfied.");
             }
             return value;
         }
@@ -3110,7 +3129,7 @@ public final class CompilationUnits {
                     compilationRuntimeContext.setAbortIfNotSatisfy(true);  //enable the abort flag
                     Object value = /*vof*/evaluable.getValue(compilationRuntimeContext);
                     mapTmp.put(/*vof*/evaluable.getId(), value);
-                } catch (RuntimeException re) {
+                } catch (NoConditionsSatisfiedException/*RuntimeException*/ re) {
                     //this was just for indication that the value was not set because the 'on' condition was
                     //not satisfied even when we managed to find a value of the key inside one of the maps.
                     //no specific action needed.
@@ -3515,7 +3534,7 @@ public final class CompilationUnits {
                     }
                     compilationRuntimeContext.getInternalContext().put(evaluable.getId(), value);
 
-                } catch (RuntimeException re) {
+                } catch (NoConditionsSatisfiedException/*RuntimeException*/ re) {
                     //this was just for indication that the value was not set because the 'on' condition was
                     //not satisfied even when we managed to find a value of the key inside one of the maps.
                     //no specific action needed.
@@ -4544,7 +4563,7 @@ public final class CompilationUnits {
                                (logIdOrElse + "#" + evaluable.getIdOrElse()),
                                (value != null? value.toString(): null));
 
-                } catch (RuntimeException re) {
+                } catch (NoConditionsSatisfiedException/*RuntimeException*/ re) {
                     //this was just for indication that the value was not set because the 'on' condition was
                     //not satisfied even when we managed to find a value of the key inside one of the maps.
                     //no specific action needed.
