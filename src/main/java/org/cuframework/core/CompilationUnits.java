@@ -732,7 +732,7 @@ public final class CompilationUnits {
             } else {
                 //the request is not to return any specific matcher group but to use the
                 //extraction expression to split the input value into an array of tokens.
-                return Pattern.compile(extractionExpr).split(value.toString());
+                return Pattern.compile(extractionExpr).split(value.toString(), -1);  //using -1 as limit to consider trailing empty tokens also
             }
         }
 

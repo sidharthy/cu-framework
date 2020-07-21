@@ -38,6 +38,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -77,6 +78,17 @@ public final class FunctionResolver {
                                                //ignore
                                            }
                                            return Arrays.copyOfRange(array, fromIndex, toIndex);
+                                       });
+        coreFunctions.put("array-contains",
+                          (context, compilationRuntimeContext) -> {
+                                           Object collection = context.length > 0? context[0]: null;
+                                           if (collection == null || context.length < 2) {
+                                               return null;  //should we return false?
+                                           }
+                                           Object value = context[1];
+                                           return collection instanceof Collection? ((Collection) collection).contains(value):
+                                                  collection.getClass().isArray()? Arrays.asList((Object[]) collection).contains(value):
+                                                  null;
                                        });
         coreFunctions.put("file-new",
                           (context, compilationRuntimeContext) -> {
@@ -264,6 +276,23 @@ public final class FunctionResolver {
                           (context, compilationRuntimeContext) -> {
                                            String str = context.length > 0? (String) context[0]: null;
                                            return str != null? str.toLowerCase(): null;
+                                       });
+        coreFunctions.put("str-split",
+                          (context, compilationRuntimeContext) -> {
+                                           String str = context.length > 0? (String) context[0]: null;
+                                           if (str == null || context.length < 2) {
+                                               return str == null? null: str.split("", 0);  //should we simply return null?
+                                           }
+                                           String delimiterRegex = (String) context[1];
+                                           delimiterRegex = delimiterRegex == null? "": delimiterRegex;
+                                           int limit = 0;
+                                           try {
+                                               if (context.length > 2 && context[2] != null)
+                                                   limit = Integer.parseInt(context[2].toString());
+                                           } catch (NumberFormatException nfe) {
+                                               //ignore
+                                           }
+                                           return str.split(delimiterRegex, limit);
                                        });
         coreFunctions.put("str-join",
                           (context, compilationRuntimeContext) -> {
