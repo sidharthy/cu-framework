@@ -2230,7 +2230,7 @@ public final class CompilationUnits {
                 init.execute(compilationRuntimeContext);
             }
             */
-            Group extendedUnit = this;
+            Group extendedUnit = this.getClone();  //this;  //25th Jul, 20: Using a clone instead of just the reference to this.
             boolean canMarkExtensionsAsProcessed = !hasConditionalExtends();
             for (Extends extension : getExtensions()) {
                 Extends.ExtensionOperation opType = extension.getExtensionOperation();
@@ -2268,10 +2268,18 @@ public final class CompilationUnits {
             java.util.Map<Group, Group> extendedGrpMap = new HashMap<Group, Group>();
             if (groups != null) {
                 for (Group group : groups) {
-                    Group extendedGrp = group.extend(compilationRuntimeContext, mctr);
-                    if (extendedGrp.areExtensionsMarkedAsProcessed()) {
+                    Group extendedGrp = group.extend(compilationRuntimeContext, mctr);  //25th Jul, 20: An optimization can be done here to call extend only on those child
+                                                                                        //groups that have not already been extended inside Group.doExtendFromBase as a result
+                                                                                        //of implicit inheritance. Just adding this note as a TODO.
+                    //if (extendedGrp.areExtensionsMarkedAsProcessed()) {  //25th Jul, 20: Irrespective of whether the extensions can be marked as processed or not
+                                                                           //we would like to update the extended group's reference inside the cu's groups list or else
+                                                                           //the right structure would not be available for processing. Further, since we are now processing
+                                                                           //the entire extension login on a cloned copy obtained at the beginning of doExtend method we don't
+                                                                           //even risk corrupting the master copy with a transient group which was valid only for this
+                                                                           //extension call and could return a completely different structure if another call to doExtend is made
+                                                                           //(owing to existence of conditional extends or dynamic group names ($ed id))
                     	extendedGrpMap.put(group, extendedGrp);
-                    }
+                    //}
                     allGroupsCacheable = allGroupsCacheable & extendedGrp.areExtensionsMarkedAsProcessed();
                 }
             }
@@ -2312,9 +2320,15 @@ public final class CompilationUnits {
                 for (ICompilationUnit cunit : cus) {
                     if (cunit instanceof IExtensible) {
                         IExtensible extendedUnit = (IExtensible) ((IExtensible) cunit).extend(compilationRuntimeContext, mctr);
-                        if (extendedUnit.areExtensionsMarkedAsProcessed()) {
+                        //if (extendedUnit.areExtensionsMarkedAsProcessed()) {  //25th Jul, 20: Irrespective of whether the extensions can be marked as processed or not
+                                                                                //we would like to update the extended group's reference inside the cu's groups list or else
+                                                                                //the right structure would not be available for processing. Further, since we are now processing
+                                                                                //the entire extension login on a cloned copy obtained at the beginning of doExtend method we don't
+                                                                                //even risk corrupting the master copy with a transient group which was valid only for this
+                                                                                //extension call and could return a completely different structure if another call to doExtend is made
+                                                                                //(owing to existence of conditional extends or dynamic group names ($ed id))
                             extendedUnitsMap.put(cunit, extendedUnit);
-                        }
+                        //}
                         allUnitsCacheable = allUnitsCacheable & extendedUnit.areExtensionsMarkedAsProcessed();
                     }
                 }
@@ -2346,7 +2360,7 @@ public final class CompilationUnits {
                 }
             }
 
-            Group thisClonedGrp = superUnit.getClone();
+            Group thisClonedGrp = superUnit;  //superUnit.getClone();  //25th Jul, 20: We are now cloning inside the doExtend method itself so no need to again clone here.
             if (opType == Extends.ExtensionOperation.REPLACE) {
                 return thisClonedGrp;
             } else if (opType == Extends.ExtensionOperation.MERGE) {
