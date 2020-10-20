@@ -374,6 +374,17 @@ public final class FunctionResolver {
                                            Date date = context.length > 0? (Date) context[0]: null;
                                            return date != null? date.getTime(): null;
                                        });
+        coreFunctions.put("date-to-str",
+                          (context, compilationRuntimeContext) -> {
+                                           Date date = context.length > 0? (Date) context[0]: null;
+                                           String format = context.length > 1? (String) context[1]: null;
+                                           return date != null?
+                                                    (format != null?
+                                                      (new SimpleDateFormat(format)).format(date):
+                                                      date.toString()
+                                                    ):
+                                                    null;
+                                       });
         coreFunctions.put("epoch",
                           (context, compilationRuntimeContext) -> System.currentTimeMillis());
         coreFunctions.put("equals",
