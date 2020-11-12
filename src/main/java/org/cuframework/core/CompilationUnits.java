@@ -4181,6 +4181,7 @@ public final class CompilationUnits {
 
             Object value = "";
             boolean[] singleElemArrayIndicatingWhetherFirstTime = {true};
+            long iterationDelayMillisecs = _iterationDelay(internalCtx);
             try {
                 for (int i = startIndex; endlessLoop? true: (decrement? i > endIndex: i < endIndex); i = decrement? i - 1: i + 1) {
                     //set the loop state variables inside internal context
@@ -4189,6 +4190,8 @@ public final class CompilationUnits {
                     if (breakk != null && breakk.satisfies(compilationRuntimeContext)) {
                         break;
                     }
+
+                    _delay(iterationDelayMillisecs, i != startIndex);  //inject applicable delay between the iterations
 
                     //evaluate the evaluables
                     value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value);
@@ -4213,6 +4216,7 @@ public final class CompilationUnits {
             final String ITEM_VALUE = getStateVariable("item-value", internalCtx);
             final String ITEM_INDEX = getStateVariable("index", internalCtx);
             int arrayLength = Array.getLength(array);  //using reflection here to keep the logic of iterating array elements generic.
+            long iterationDelayMillisecs = _iterationDelay(internalCtx);
             try {
                 for (int i = 0; i < arrayLength; i++) {
                     internalCtx.put(ITEM_VALUE, Array.get(array, i));  //using reflection here to keep the logic of iterating array elements generic.
@@ -4221,6 +4225,8 @@ public final class CompilationUnits {
                     if (breakk != null && breakk.satisfies(compilationRuntimeContext)) {
                         break;
                     }
+
+                    _delay(iterationDelayMillisecs, i != 0);  //inject applicable delay between the iterations
 
                     //evaluate the evaluables
                     value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value);
@@ -4242,6 +4248,7 @@ public final class CompilationUnits {
             boolean[] singleElemArrayIndicatingWhetherFirstTime = {true};
             final String ITEM_VALUE = getStateVariable("item-value", internalCtx);
             final String ITEM_INDEX = getStateVariable("index", internalCtx);
+            long iterationDelayMillisecs = _iterationDelay(internalCtx);
             int index = 0;
             try {
                 for (Object item: iterable) {  //for (int i = 0; i < iterable.size(); i++) {
@@ -4251,6 +4258,8 @@ public final class CompilationUnits {
                     if (breakk != null && breakk.satisfies(compilationRuntimeContext)) {
                         break;
                     }
+
+                    _delay(iterationDelayMillisecs, index != 1);  //inject applicable delay between the iterations
 
                     //evaluate the evaluables
                     value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value);
@@ -4272,15 +4281,21 @@ public final class CompilationUnits {
             boolean[] singleElemArrayIndicatingWhetherFirstTime = {true};
             final String ITEM_KEY = getStateVariable("item-key", internalCtx);
             final String ITEM_VALUE = getStateVariable("item-value", internalCtx);
+            final String ITEM_INDEX = getStateVariable("index", internalCtx);
+            long iterationDelayMillisecs = _iterationDelay(internalCtx);
+            int index = 0;
             try {
                 for (Object _entry: map.entrySet()) {  //map.forEach((key,item) -> {
                     java.util.Map.Entry entry = (java.util.Map.Entry) _entry;
                     internalCtx.put(ITEM_KEY, entry.getKey());
                     internalCtx.put(ITEM_VALUE, entry.getValue());
+                    internalCtx.put(ITEM_INDEX, index++);  //this represents the iteration count/index more than the item index in the case of map
 
                     if (breakk != null && breakk.satisfies(compilationRuntimeContext)) {
                         break;
                     }
+
+                    _delay(iterationDelayMillisecs, index != 1);  //inject applicable delay between the iterations
 
                     //evaluate the evaluables
                     value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value);
@@ -4288,6 +4303,7 @@ public final class CompilationUnits {
             } finally {
                 internalCtx.remove(ITEM_KEY);
                 internalCtx.remove(ITEM_VALUE);
+                internalCtx.remove(ITEM_INDEX);
             }
             return value;
         }
@@ -4317,6 +4333,31 @@ public final class CompilationUnits {
         //represents an iteration of the loop. Subclasses can override.
         protected Object iteration(CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException {
             return getValue(compilationRuntimeContext);
+        }
+
+        //returns -1 if there is no meaningful delay specified. Else returns the delay in millisecs
+        private long _iterationDelay(java.util.Map<String, Object> internalCtx) {
+            java.util.Map<String, Object> requestContext = internalCtx;
+            Object iterationDelayAsObject = requestContext.get("itr-delay-millisecs");
+            long delayInMillisecs = -1;
+            try {
+                if (iterationDelayAsObject != null) {
+                    delayInMillisecs = Long.parseLong(iterationDelayAsObject.toString());
+                }
+            } catch(NumberFormatException nfe) {
+                delayInMillisecs = -1;
+            }
+            return delayInMillisecs;
+        }
+
+        private void _delay(long iterationDelayMillisecs, boolean isDelayApplicable) {
+            if (iterationDelayMillisecs > 0 && isDelayApplicable) {
+                try {
+                    Thread.sleep(iterationDelayMillisecs);
+                } catch(InterruptedException ie) {
+                    //instead of muting this exception shall we allow it to be thrown?
+                }
+            }
         }
 
         /*********** Start - cloning methods ************/
