@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root name="html.xml">
+<headless-group id="html" selfSerializationPolicy="value" xmlns:html5="html5" xmlns="html5">
+ <html id="executioner">
+   <using>
+      <get id="group-serializer-type" default="source"/>
+     <valueof id="name">Cool</valueof>
+     <valueof id="itr-joiner" default=""/>
+   </using>
+   <html5:head id="head" serializableNodeName="head">
+     <title name="title" tbt="child">Compilation Units at Work</title>
+   </html5:head>
+   <body name="body">
+     <div name="div1" tbt="child"><![CDATA[Test html page {$name}]]></div>
+     <div name="div2" evalExtent="DV" tbt="child"><![CDATA[This is inside a div]]></div>
+     <error-msg>$$$uppercasestr(This is an error message)</error-msg>
+     <div tbt="child">$$$hello(World)</div>
+     <br/>
+     <table id="table" style="width:500px;">
+       <using>
+         <valueof id="num-rows" default="10"/>
+         <valueof id="num-cols" default="5"/>
+         <valueof id="cell-width">width:$$$div(100,5)%</valueof>
+         <!-- <valueof id="cell-width">concat('width:',100 div 5,'%')</valueof> -->
+       </using>
+       <tr id="header-row" style="background:yellow;">
+         <loop id="header">
+           <using>
+             <cvalueof id="times">$num-cols;</cvalueof>
+             <!-- <valueof id="itr-joiner" default=""/> -->
+           </using>
+           <th id="header_$$$sum($header_index, 2)" style="$cell-width" tbt="child">
+             <![CDATA[Header ]]>$header_index
+           </th>
+         </loop>
+       </tr>
+       <loop id="rows">
+         <using>
+           <valueof id="times">$num-rows</valueof>
+           <!-- <valueof id="itr-joiner" default=""/> -->
+         </using>
+         <tr id="$rows_index">
+           <loop id="cells">
+             <using>
+               <valueof id="times">$num-cols</valueof>
+               <!-- <valueof id="itr-joiner" default=""/> -->
+             </using>
+             <td id="cell_$cells_index" style="$cell-width" tbt="child">
+               Cell $cells_index
+             </td>
+           </loop>
+         </tr>
+       </loop>
+     </table>
+     <cu-text id="cu-text-example" on="serexec" xmlns="http://www.cuframework.org">
+       <abcdef>
+         Unknown tag inside cu text
+       </abcdef>
+       <on>
+         <conditional expression="true()"/>
+       </on>
+     </cu-text>
+     <product-table name="prod-tbl-1"/>
+     <hr/>
+     <product-table-2 name="prod-tbl-2">
+       <table id="prodtbl1" style="width:300px;">
+         <using>
+           <valueof id="num-rows" default="4"/>
+           <valueof id="num-cols" default="2"/>
+           <valueof id="cell-width">width:$$$div(100,2)%</valueof>
+           <!-- <valueof id="cell-width">concat('width:',100 div 2,'%')</valueof> -->
+         </using>
+       </table>
+     </product-table-2>
+   </body>
+ </html>
+</headless-group>
+</root>

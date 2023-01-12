@@ -59,7 +59,9 @@ public class TestRunner extends Runner {
         }
 
         //register sample cus
-        CompilationUnits.setCompilationClassForTag(org.cuframework.samplecu.Calculator.TAG_NAME, org.cuframework.samplecu.Calculator.class);
+        CompilationUnits.setCompilationClassForTag(null,
+                                                   org.cuframework.samplecu.Calculator.TAG_NAME,
+                                                   org.cuframework.samplecu.Calculator.class);
     }
 
     @Before

@@ -28,8 +28,11 @@
 
 package org.cuframework.core;
 
+import org.cuframework.config.ConfigManager;
+import org.cuframework.el.EL;
+import org.cuframework.el.EL.Expression;
+import org.cuframework.el.ExpressionRuntimeContext;
 import org.cuframework.MapOfMaps;
-import org.cuframework.func.FunctionResolver;
 import org.cuframework.func.IFunction;
 import org.cuframework.serializer.CompilationUnitsSerializationFactory;
 import org.cuframework.util.cu.FileIO;
@@ -37,6 +40,7 @@ import org.cuframework.util.cu.HttpIO;
 import org.cuframework.util.cu.RdbmsIO;
 import org.cuframework.util.cu.LoadProperties;
 import org.cuframework.util.UtilityFunctions;
+import org.cuframework.ns.NamespaceDynamicTemplatesHandler;
 
 import java.lang.reflect.Array;
 import java.text.MessageFormat;
@@ -68,13 +72,12 @@ import org.w3c.dom.NodeList;
  */
 public final class CompilationUnits {
 
+    public static final String ROOT_CU_NAMESPACE_URI = "http://www.cuframework.org";
+
     private CompilationUnits() {
     }
 
-    private static final String CORE_CUs_CONTAINER = "core-units";
-    private static final String MORE_CUs_CONTAINER = "more-units";
-    private static final java.util.Map<String, java.util.Map<String, Class<? extends ICompilationUnit>>> TAG_TO_UNIT_MAPPING =
-                                                             new HashMap<String, java.util.Map<String, Class<? extends ICompilationUnit>>>();
+    private static final java.util.Map<String, CompilationUnitsNamespace> NAMESPACES = new HashMap<>();
     static {
         java.util.Map<String, Class<? extends ICompilationUnit>> coreCUs = new HashMap<String, Class<? extends ICompilationUnit>>();
         coreCUs.put(Conditional.TAG_NAME, Conditional.class);
@@ -101,6 +104,9 @@ public final class CompilationUnits {
         coreCUs.put(Loop.Break.TAG_NAME, Loop.Break.class);
         coreCUs.put(Log.TAG_NAME, Log.class);
         coreCUs.put(Assert.TAG_NAME, Assert.class);
+        coreCUs.put(TextBlock.TAG_NAME, TextBlock.class);
+        coreCUs.put("#cdata-section", TextBlock.class);
+        coreCUs.put(CuText.TAG_NAME, CuText.class);
 
         java.util.Map<String, Class<? extends ICompilationUnit>> moreCUs = new HashMap<String, Class<? extends ICompilationUnit>>();
         moreCUs.put(LoadProperties.TAG_NAME, LoadProperties.class);  //adding in more cu map as it is a utility cu and its ok to allow
@@ -112,59 +118,68 @@ public final class CompilationUnits {
         moreCUs.put(HttpIO.TAG_NAME, HttpIO.class);  //adding in more cu map as it is a utility cu and its ok to allow
                                                      //applications to replace it with their own implementations.
 
-        TAG_TO_UNIT_MAPPING.put(CORE_CUs_CONTAINER, coreCUs);
-        TAG_TO_UNIT_MAPPING.put(MORE_CUs_CONTAINER, moreCUs);
+        NAMESPACES.put(ROOT_CU_NAMESPACE_URI,
+                       new CompilationUnitsNamespace(ROOT_CU_NAMESPACE_URI,
+                                                     coreCUs,
+                                                     moreCUs,
+                                                     DefaultPlatformFunctions.getCoreFunctions()));
     }
 
-    public static ICompilationUnit getCompilationUnitForTag(String tagName) {
-        Class<? extends ICompilationUnit> cu = CompilationUnits.getCompilationClassForTag(tagName);
-        if (cu != null) {
-            try {
-                return cu.newInstance();
-            } catch (InstantiationException e) {
-                // can be ignored as this wouldn't happen
-            } catch (IllegalAccessException e) {
-                // can be ignored as this wouldn't happen
-            }
-        }
-        return null;
+    public static ICompilationUnit getCompilationUnitForTag(String namespaceURI, String tagName) {
+        CompilationUnitsNamespace cuNamespace = getCompilationUnitsNamespace(namespaceURI, false);
+        return cuNamespace == null? null: cuNamespace.getCompilationUnitForTag(tagName);
     }
 
-    public static Class<? extends ICompilationUnit> getCompilationClassForTag(String tagName) {
-        if (tagName == null) {
-            return null;
-        }
-        Class<? extends ICompilationUnit> cu = TAG_TO_UNIT_MAPPING.get(CORE_CUs_CONTAINER).get(tagName);
-        if (cu == null) {
-            //tag name didn't correspond to the core units. Let's now check the more units.
-            cu = TAG_TO_UNIT_MAPPING.get(MORE_CUs_CONTAINER).get(tagName);
-        }
-        return cu;
+    public static Class<? extends ICompilationUnit> getCompilationClassForTag(String namespaceURI, String tagName) {
+        CompilationUnitsNamespace cuNamespace = getCompilationUnitsNamespace(namespaceURI, false);
+        return cuNamespace == null? null: cuNamespace.getCompilationClassForTag(tagName);
     }
 
-    public static boolean setCompilationClassForTag(String tagName, String tagClassName) throws ClassNotFoundException, ClassCastException {
-        return setCompilationClassForTag(tagName, Class.forName(tagClassName).asSubclass(ICompilationUnit.class));
+    public static IFunction resolveFunction(String namespaceURI, String fnName) {
+        CompilationUnitsNamespace cuNamespace = getCompilationUnitsNamespace(namespaceURI, false);
+        return cuNamespace == null? null: cuNamespace.resolveFunction(fnName);
     }
 
-    public static boolean setCompilationClassForTag(String tagName, Class<? extends ICompilationUnit> tagClass) {
-        boolean mapped = false;
-        if (tagName != null && tagClass != null) {
-            TAG_TO_UNIT_MAPPING.get(MORE_CUs_CONTAINER).put(tagName, tagClass);
-            mapped = true;
-        }
-        return mapped;
+    protected static Class<? extends ICompilationUnit> getCompilationClassForTag(String namespaceURI,
+                                                                                 String tagName,
+                                                                                 boolean attemptRootLookup) {
+        CompilationUnitsNamespace cuNamespace = getCompilationUnitsNamespace(namespaceURI, false);
+        return cuNamespace == null? null: cuNamespace.getCompilationClassForTag(tagName, attemptRootLookup);
+    }
+
+    protected static IFunction resolveFunction(String namespaceURI, String fnName, boolean attemptRootLookup) {
+        CompilationUnitsNamespace cuNamespace = getCompilationUnitsNamespace(namespaceURI, false);
+        return cuNamespace == null? null: cuNamespace.resolveFunction(fnName, attemptRootLookup);
+    }
+
+    public static boolean setCompilationClassForTag(String namespaceURI, String tagName, String tagClassName)
+                                                                                   throws ClassNotFoundException, ClassCastException {
+        //return setCompilationClassForTag(tagName, Class.forName(tagClassName).asSubclass(ICompilationUnit.class));
+        return getCompilationUnitsNamespace(namespaceURI, true).setCompilationClassForTag(tagName, tagClassName);
+    }
+
+    public static boolean setCompilationClassForTag(String namespaceURI, String tagName, Class<? extends ICompilationUnit> tagClass) {
+        return getCompilationUnitsNamespace(namespaceURI, true).setCompilationClassForTag(tagName, tagClass);
     }
 
     //This method can unset only 'more' units and not the 'core' units.
-    public static Class<? extends ICompilationUnit> unsetCompilationUnitForTag(String tagName) {
-        Class<? extends ICompilationUnit> removedUnit = null;
-        if (tagName != null) {
-            removedUnit = TAG_TO_UNIT_MAPPING.get(MORE_CUs_CONTAINER).remove(tagName);
-        }
-        return removedUnit;
+    public static Class<? extends ICompilationUnit> unsetCompilationUnitForTag(String namespaceURI, String tagName) {
+        CompilationUnitsNamespace cuNamespace = getCompilationUnitsNamespace(namespaceURI, false);
+        return cuNamespace == null? null: cuNamespace.unsetCompilationUnitForTag(tagName);
     }
 
-    public static boolean isAssignableFrom(Class<? extends ICompilationUnit> intendedCUClass, Class<? extends ICompilationUnit> tagCUClass) {
+    private static CompilationUnitsNamespace getCompilationUnitsNamespace(String namespaceURI, boolean create) {
+        namespaceURI = namespaceURI == null? ROOT_CU_NAMESPACE_URI: namespaceURI;
+        CompilationUnitsNamespace cuNamespace = NAMESPACES.get(namespaceURI);
+        if (cuNamespace == null && create) {
+            cuNamespace = new CompilationUnitsNamespace(namespaceURI);
+            NAMESPACES.put(namespaceURI, cuNamespace);
+        }
+        return cuNamespace;
+    }
+
+    public static boolean isAssignableFrom(Class<? extends ICompilationUnit> intendedCUClass,
+                                           Class<? extends ICompilationUnit> tagCUClass) {
         boolean assignable = false;
         if (intendedCUClass != null && tagCUClass != null) {
             assignable = intendedCUClass.isAssignableFrom(tagCUClass);
@@ -181,9 +196,24 @@ public final class CompilationUnits {
     public interface ICompilationUnit {
         static final String ATTRIBUTE_ID = "id";
 
+        java.util.Set<String> getAttributeNames();
+        boolean isAttributeNative(String attr);
         String getAttribute(String key);
+        String getAttribute(String key, CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException;
         String getId();
         String getIdOrElse();
+        String getIdOrElse(CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException;
+        String getNodeName();  //should return the local name (i.e. without ns prefix) of the xml node.
+                               //If local name is null then return the node name.
+        String getNodeType();  //should return the type of the xml node.
+        String getSerializableNodeName();  //should return the node name to be written at the time of
+                                           //serialization (e.g. by the source serializer)
+        String getSerializableNodeName(CompilationRuntimeContext compilationRuntimeContext)
+                                               throws XPathExpressionException;  //should return the node name to be written at the time
+                                                                                 //of serialization (e.g. by the source serializer)
+        String getTagName();  //should return the name of the root cu class of which this
+                              //cu is aliased e.g. group, select, valueof, condition etc.
+        String getNamespacePrefix();  //namespace prefix of the node.
         String getNamespaceURI();
         boolean matchesIdOrElse(String idOrElse);
         void compile(Node n) throws XPathExpressionException;
@@ -195,17 +225,36 @@ public final class CompilationUnits {
         private Properties attributes = new Properties();
         private Node nodeContext = null;
 
-        private static enum AttributeType {
-            STATIC,  //attribute value is static and is to be used as is.
-            DYNAMIC_INTERNALCONTEXT_DEPENDANT,  //attribute value is dynamic and is to be resolved using the internal context map.
-            DYNAMIC_CHILD_DEPENDANT  //attribute value is dynamic and is to be resolved to one of its child's value (ofcource if the child is of type IEvaluable)
+        protected static enum TextBlockTreatment {
+            CHILD("child"),
+            EVAL_EXPRESSION("el"),
+            SKIP("skip"),
+            IGNORE("ignore"),
+            NONE("none");
+
+            private String treatment = "";
+            private TextBlockTreatment(String treatment) {
+                this.treatment = treatment;
+            }
+            private String getAsString() {
+                return treatment;
+            }
         }
 
         //define the attributes available for all compilation units.
         //private static final String ATTRIBUTE_ID = "id";
-        private static final String[] ATTRIBUTES = {ATTRIBUTE_ID};
+        private static final String ATTRIBUTE_TBT = "tbt";  //TBT = Text Block Treatment, allowed values = child, el, skip|ignore|none
+        private static final String ATTRIBUTE_SERIALIZABLE_NODE_NAME = "serializableNodeName";
+        private static final String[] ATTRIBUTES = {ATTRIBUTE_ID, ATTRIBUTE_TBT, ATTRIBUTE_SERIALIZABLE_NODE_NAME};
 
-        private static final String IMPLICIT_ATTRIBUTE_NAMESPACE_URI = "--[namespace-uri]--";
+        private static final String IMPLICIT_ATTRIBUTE_NAMESPACE_PREFIX = "--namespace-prefix--";
+        private static final String IMPLICIT_ATTRIBUTE_NAMESPACE_URI = "--namespace-uri--";
+        private static final String IMPLICIT_ATTRIBUTE_NODE_NAME = "--node-name--";
+        private static final String IMPLICIT_ATTRIBUTE_NODE_TYPE = "--node-type--";  //this is to basically represent the xml node type (like text,
+                                                                                     //cdata-section etc.). It is not to be confused with the type
+                                                                                     //attribute of some cus like Group cu.
+
+        private CompilationUnitComputationHelper cuch = null;  //should get initialized on demand
 
         Node getNodeContext() {
             return this.nodeContext;
@@ -215,8 +264,46 @@ public final class CompilationUnits {
             this.nodeContext = n;
         }
 
+        protected CompilationUnitComputationHelper getComputationHelper() {
+            if (cuch == null) {
+                cuch = CompilationUnitComputationHelper.instance(this);
+            }
+            return cuch;
+        }
+
+        @Override
+        public String getNodeName() {
+            return getAttribute(IMPLICIT_ATTRIBUTE_NODE_NAME);
+        }
+
+        @Override
+        public String getNodeType() {
+            return getAttribute(IMPLICIT_ATTRIBUTE_NODE_TYPE);
+        }
+
+        @Override
+        public String getSerializableNodeName() {
+            return getAttribute(ATTRIBUTE_SERIALIZABLE_NODE_NAME);
+        }
+
+        @Override
+        public String getSerializableNodeName(CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException {
+            return getAttribute(ATTRIBUTE_SERIALIZABLE_NODE_NAME, compilationRuntimeContext);
+        }
+
+        @Override
+        public String getNamespacePrefix() {
+            return getAttribute(IMPLICIT_ATTRIBUTE_NAMESPACE_PREFIX);
+        }
+
+        @Override
         public String getNamespaceURI() {
             return getAttribute(IMPLICIT_ATTRIBUTE_NAMESPACE_URI);
+        }
+
+        @Override
+        public java.util.Set<String> getAttributeNames() {
+            return attributes.stringPropertyNames();
         }
 
         static String getAttributeValueIffAttributeIsDefined(String attribute, Node n) throws XPathExpressionException {
@@ -227,8 +314,12 @@ public final class CompilationUnits {
             return null;
         }
 
-        void setAttribute(String key, String value) {
+        void setAttribute(String key, String value, boolean mergeValue) {
             if (key != null && value != null) {
+                if (mergeValue) {
+                    String existingValue = getAttribute(key);
+                    value = existingValue != null? existingValue + value: value;
+                }
                 attributes.setProperty(key, value);
             }
         }
@@ -239,6 +330,7 @@ public final class CompilationUnits {
             }
         }
 
+        @Override
         public String getAttribute(String key) {
             return attributes.getProperty(key);
         }
@@ -247,90 +339,31 @@ public final class CompilationUnits {
         /************************ Start - New attribute methods added to generically support computed values **************************/
         /******************************************************************************************************************************/
         /******************************************************************************************************************************/
+
+        @Override
         public String getAttribute(String key, CompilationRuntimeContext compilationRuntimeContext)
                                                                                 throws XPathExpressionException {
-            return computeAttributeValue(getAttribute(key), compilationRuntimeContext);
+            //return computeAttributeValue(getAttribute(key), compilationRuntimeContext);
+            return getComputationHelper().computeAttributeValue(key, getAttribute(key), compilationRuntimeContext);
         }
 
         /**
             This method computes the attribute value using the following scheme:
-            1. If the attribute value starts with special characters that makes it eligible for computation then an attempt
+            1. If the attribute value contains special characters that makes it eligible for computation then an attempt
                to resolve the computed value is made, and, on success, the computed value is returned.
-            2. If the attribute value either doesn't start with special characters that makes it eligible for computation or
+            2. If the attribute value either doesn't contain the special characters that makes it eligible for computation or
                if the computation didn't successfully resolve to a value then the passed attribute value gets returned as is.
+
+            Note: attributeName is used only for config lookup purpose. The actual evaluation would happen only using the attributeValue.
          */
-        protected String computeAttributeValue(String attributeValue, CompilationRuntimeContext compilationRuntimeContext)
+        protected String computeAttributeValue(String attributeName,
+                                               String attributeValue,
+                                               CompilationRuntimeContext compilationRuntimeContext)
                                                                           throws XPathExpressionException {
-            return (String) computeAttributeValue(attributeValue, compilationRuntimeContext, true, false);
+            //return (String) computeAttributeValue(attributeValue, compilationRuntimeContext, true, false);
+            return getComputationHelper().computeAttributeValue(attributeName, attributeValue, compilationRuntimeContext);
         }
 
-        protected Object computeAttributeValue(String attributeValue, CompilationRuntimeContext compilationRuntimeContext,
-                                               boolean returnValueAsString, boolean acceptNullComputationValue)
-                                                                          throws XPathExpressionException {
-            Object computedAttributeValue = attributeValue;
-            AttributeType attributeType = getAttributeTypeFromValue(attributeValue);
-            if (CompilationUnit.isAttributeTypeDynamic(attributeType)) {
-                //ids starting with '$' has special meaning and needs to be resolved to either the value
-                //returned by one of the child elements or some variable inside the internal context.
-                switch(attributeType) {
-                    case DYNAMIC_CHILD_DEPENDANT:
-                                                 {
-                                                     if (attributeValue.length() > 2) {  //length of $$ = 2
-                                                         String referencedChildId = attributeValue.substring(2);
-                                                         ICompilationUnit childCU = getChild(referencedChildId);
-                                                         if (childCU instanceof IEvaluable) {
-                                                             Object _value = ((IEvaluable) childCU).getValue(compilationRuntimeContext);
-                                                             if (_value != null) {
-                                                                 computedAttributeValue = returnValueAsString? _value.toString(): _value;
-                                                             } else if (acceptNullComputationValue) {
-                                                                 computedAttributeValue = null;
-                                                             }
-                                                         }
-                                                     }
-                                                     break;
-                                                 }
-                    case DYNAMIC_INTERNALCONTEXT_DEPENDANT:
-                                                 {
-                                                     if (attributeValue.length() > 1) {  //length of $ = 1
-                                                         Object _value = UtilityFunctions.getValue(attributeValue.substring(1),
-                                                                                                  compilationRuntimeContext.getInternalContext());
-                                                         if (_value != null) {
-                                                             computedAttributeValue = returnValueAsString? _value.toString(): _value;
-                                                         } else if (acceptNullComputationValue) {
-                                                             computedAttributeValue = null;
-                                                         }
-                                                     }
-                                                     break;
-                                                 }
-                }
-            }
-            return computedAttributeValue;
-        }
-
-        private static AttributeType getAttributeTypeFromValue(String rawAttributeValue) {
-            AttributeType attributeType = AttributeType.STATIC;
-            if (rawAttributeValue == null) {
-                attributeType = AttributeType.STATIC;
-            } else if (rawAttributeValue.startsWith("$$")) {
-                attributeType = AttributeType.DYNAMIC_CHILD_DEPENDANT;
-            } else if (rawAttributeValue.startsWith("$")) {
-                attributeType = AttributeType.DYNAMIC_INTERNALCONTEXT_DEPENDANT;
-            }
-            return attributeType;
-        }
-
-        private static boolean isAttributeTypeDynamic(AttributeType attributeType) {
-            return attributeType == AttributeType.DYNAMIC_CHILD_DEPENDANT ||
-                   attributeType == AttributeType.DYNAMIC_INTERNALCONTEXT_DEPENDANT;
-        }
-
-        public static boolean isAttributeValueDynamic(String rawAttributeValue) {
-            return CompilationUnit.isAttributeTypeDynamic(CompilationUnit.getAttributeTypeFromValue(rawAttributeValue));
-        }
-
-        public boolean isAttributeDynamic(String key) {
-            return CompilationUnit.isAttributeValueDynamic(getAttribute(key));
-        }
         /******************************************************************************************************************************/
         /************************** End - New attribute methods added to generically support computed values **************************/
         /******************************************************************************************************************************/
@@ -356,10 +389,32 @@ public final class CompilationUnits {
          * 
          * @return
          */
+        @Override
         public String getIdOrElse() {
             return getId();
         }
 
+        //This method provides support for dynamic resolution of the CU identifier. Any identifier containing
+        //special characters (e.g. '$') would be dynamically computed.
+        @Override
+        public String getIdOrElse(CompilationRuntimeContext compilationRuntimeContext)
+                                                                            throws XPathExpressionException {
+            String computedIdOrElse = getIdOrElse();  //initialize the identifier with the uncomputed value
+            /*
+                //Let's not trim the identifier and expect that the same is provided correctly inside the
+                //xml file. Trimming might bring in inconsistency between the values returned by non-parameterized
+                //getIdOrElse() method and this method in case the computation wasn't required (e.g. when the
+                //identifier string didn't contain dynamic elements) or when the computation failed (e.g. when no
+                //child cu corresponding to the referenced identifier is found). In such cases the value returned by
+                //non-parameterized getIdOrElse() method should be returned as is without any trimming/modifications.
+                computedIdOrElse = computedIdOrElse != null ? computedIdOrElse.trim() : computedIdOrElse;
+            */
+            return computeAttributeValue(CompilationUnitComputationHelper.VIRTUAL_ATTRIBUTE_ID_OR_ELSE,
+                                         computedIdOrElse,
+                                         compilationRuntimeContext);
+        }
+
+        @Override
         public boolean matchesIdOrElse(String idOrElse) {
             if (idOrElse == null) {
                 return false;
@@ -367,50 +422,97 @@ public final class CompilationUnits {
             return idOrElse.equals(getIdOrElse());
         }
 
+        @Override
         public void compile(Node n) throws XPathExpressionException {
             this.nodeContext = n;
 
-            // compile all the base attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
-            }
+            // compile all the attributes
+            doCompileAttributes(n, doInitDefaultConfigAttributes(n));
 
-            // set the implicit namespace attributie
+            // set the implicit attributes
             if (n.getNamespaceURI() != null) {
-                setAttribute(IMPLICIT_ATTRIBUTE_NAMESPACE_URI, n.getNamespaceURI());
+                setAttribute(IMPLICIT_ATTRIBUTE_NAMESPACE_PREFIX, n.getPrefix(), false);
+                setAttribute(IMPLICIT_ATTRIBUTE_NAMESPACE_URI, n.getNamespaceURI(), false);
             }
+            setAttribute(IMPLICIT_ATTRIBUTE_NODE_NAME, UtilityFunctions.getLocalOrNodeName(n), false);  //prefer name without ns prefix
+            setAttribute(IMPLICIT_ATTRIBUTE_NODE_TYPE, "" + n.getNodeType(), false);
 
-            //compile the attributes
-            doCompileAttributes(n);
-            //compile the children
+            // compile the children
             doCompileChildren(n);
+            postCompileChildren(n);
             //doCompile(n);
         }
 
         /******* Start - Default implementations of compilation related methods. It should suffice for most of the cases. *******/
         /******* If any of the subclasses need absolute control over any of the compilation tasks then they can override. *******/
         /************************************************************************************************************************/
+        protected java.util.Set<String> doInitDefaultConfigAttributes(Node n) throws XPathExpressionException {
+            String nodeName = UtilityFunctions.getLocalOrNodeName(n);
+            String namespaceURI = n.getNamespaceURI();
+            String tagName = getTagName();
+            java.util.Map<String, Object> defaultConfigAttributes = ConfigManager.getInstance().getAttributes(nodeName, tagName, namespaceURI, null);
+            for (Entry<String, Object> entry: defaultConfigAttributes.entrySet()) {
+                String attribute = entry.getKey();
+                Object attributeValue = entry.getValue();
+                setAttribute(
+                        attribute,
+                        attributeValue == null? null: attributeValue.toString(),
+                        false);
+            }
+            return ConfigManager.getInstance().getNamesOfMergeableAttributes(nodeName, tagName, namespaceURI, null);
+        }
+
+        protected void doCompileAttributes(Node n, java.util.Set<String> mergeableAttributes) throws XPathExpressionException {
+            NodeList attrs = (NodeList) CompilationUnits.XPATH.evaluate("@*", n, XPathConstants.NODESET);
+            for (int i = 0; i < attrs.getLength(); i++) {
+                String attribute = attrs.item(i).getNodeName();
+                String attributeValue = attrs.item(i).getNodeValue();
+                setAttribute(
+                        attribute,
+                        attributeValue,
+                        mergeableAttributes.contains(attribute));
+            }
+        }
+
         protected void doCompileChildren(Node n) throws XPathExpressionException {
             //compile all the children
+            String childrenXPathExpr = treatTextBlockAsChild()? "*|text()": "*";
             NodeList nl = (NodeList) CompilationUnits.XPATH
-                                         .evaluate("*", n, XPathConstants.NODESET);
+                                         .evaluate(childrenXPathExpr, n, XPathConstants.NODESET);
             for (int i = 0; i < nl.getLength(); i++) {
-                String nodeName = nl.item(i).getNodeName();
-                if (isChildTagRecognized(nodeName)) {
-                    doCompileChild(nl.item(i));
+                String nodeName = UtilityFunctions.getLocalOrNodeName(nl.item(i));
+                String nodeNamespace = nl.item(i).getNamespaceURI();
+                if (isChildTagRecognized(nodeNamespace, nodeName)) {
+                    doCompileChild(i, nl.item(i));
                 }
             }
         }
 
-        protected void doCompileChild(Node n) throws XPathExpressionException {
-            String nodeName = n.getNodeName();
-            ICompilationUnit cu = CompilationUnits.getCompilationUnitForTag(nodeName);
+        protected void doCompileChild(int nodeIndex, Node n) throws XPathExpressionException {
+            String nodeName = UtilityFunctions.getLocalOrNodeName(n);
+            ICompilationUnit cu = CompilationUnits.getCompilationUnitForTag(n.getNamespaceURI(), nodeName);
             if (cu != null) {
                 cu.compile(n);
+                if (cu instanceof IEmptiable && ((IEmptiable) cu).isEmpty()) {
+                    return;  //the cu is emptiable as well as empty (e.g. cu represents an empty text block) then we don't need to add it.
+                }
+                if (cu instanceof TextBlock) {
+                    ((TextBlock) cu).setAttribute(IMPLICIT_ATTRIBUTE_NAMESPACE_PREFIX,
+                                                  getNamespacePrefix(), false);  //inherit ns prefix from parent
+                    ((TextBlock) cu).setAttribute(IMPLICIT_ATTRIBUTE_NAMESPACE_URI,
+                                                  getNamespaceURI(), false);  //inherit namespace from parent
+                    ((TextBlock) cu).setAttribute(ATTRIBUTE_ID,
+                                                  (getIdOrElse() != null? getIdOrElse() + "-": "") + "#text-" + nodeIndex,
+                                                  false);
+                }
                 doAddCompiledUnit(nodeName, cu);
             }
+        }
+
+        //Subclasses may override to support advanced cases like adding more children from other sources
+        //(e.g. those inherited through cu-text defined as body of custom cu definitions in namespace).
+        protected void postCompileChildren(Node n) throws XPathExpressionException {
+            //nothing to do by default
         }
         /******* End - Default implementations of compilation related methods *******/
         /****************************************************************************/
@@ -421,10 +523,25 @@ public final class CompilationUnits {
             return t1 == t2;
         }
 
+        static boolean areAssignableTypes(Class<? extends ICompilationUnit> t1, Class<? extends ICompilationUnit> t2) {
+            return CompilationUnits.isAssignableFrom(t1, t2);
+        }
+
         //Note: The method would return null if element list is null.
         static <T extends ICompilationUnit> T[] getElementsFromList(List<T> elementList, T[] typeArray) {
             if (elementList != null) {
                 return elementList.toArray(typeArray);
+            }
+            return null;
+        }
+
+        //Note: The method would return null if element list is null or the specified elementType is null. Else it searches inside
+        //the elementList for elements of specified type and returns an array of elements of the same type.
+        static <T extends ICompilationUnit> T[] getElementsFromList(List<ICompilationUnit> elementList, Class<T> elementType, T[] typeArray) {
+            if (elementList != null && elementType != null) {
+                return elementList.stream().filter(elem -> areAssignableTypes(elementType, elem.getClass()))
+                                           .collect(java.util.stream.Collectors.toList())
+                                           .toArray(typeArray);
             }
             return null;
         }
@@ -450,10 +567,36 @@ public final class CompilationUnits {
         /***************************** End - Util methods *****************************/
         /******************************************************************************/
 
-        protected abstract boolean isChildTagRecognized(String tagName);
-        protected abstract void doCompileAttributes(Node n) throws XPathExpressionException;
+        /***************************** Start - TBT methods *****************************/
+        /*******************************************************************************/
+        protected boolean treatTextBlockAsChild() {
+            String tbt = getAttribute(ATTRIBUTE_TBT);
+            return TextBlockTreatment.CHILD.getAsString().equalsIgnoreCase(tbt);
+        }
+
+        protected boolean treatTextBlockAsEvalExpr() {
+            String tbt = getAttribute(ATTRIBUTE_TBT);
+            return tbt == null || //by default text eval is enabled
+                   TextBlockTreatment.EVAL_EXPRESSION.getAsString().equalsIgnoreCase(tbt);
+        }
+        /****************************** End - TBT methods ******************************/
+        /*******************************************************************************/
+
+        @Override
+        public boolean isAttributeNative(String attr) {  //This method should be implemented by the subclasses to indicate if the
+                                                         //attribute is also a native attribute of a particular cu. That information
+                                                         //will help in performing actions like skipping of the native attributes at
+                                                         //the time of specific serializations (e.g. source definition serialization
+                                                         //of cu xml nodes). Generic attributes like the 'id' and the 'name' should
+                                                         //usually be exempted from being flagged as native attributes.
+            return UtilityFunctions.isItemInArray(attr,
+                                                  new String[]{ATTRIBUTE_TBT, ATTRIBUTE_SERIALIZABLE_NODE_NAME,
+                                                               IMPLICIT_ATTRIBUTE_NAMESPACE_PREFIX, IMPLICIT_ATTRIBUTE_NAMESPACE_URI,
+                                                               IMPLICIT_ATTRIBUTE_NODE_NAME, IMPLICIT_ATTRIBUTE_NODE_TYPE});
+        }
+
+        protected abstract boolean isChildTagRecognized(String tagNamespaceURI, String tagName);
         protected abstract void doAddCompiledUnit(String cuTagName, ICompilationUnit cu);
-        //protected abstract void doCompile(Node n) throws XPathExpressionException;
         public abstract ICompilationUnit getChild(String idOrElseOfChild);
         public abstract <T extends ICompilationUnit> T[] getChildren(Class<T> type);
     }
@@ -463,7 +606,13 @@ public final class CompilationUnits {
     }
 
     public interface IEvaluable extends ICompilationUnit {
+        boolean doOutputNullValue();  //if this method returns false and if the getValue method returns null then the
+                                      //Set cu or the respective serializers should not add this cu's data to the output.
         Object getValue(CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException;
+    }
+
+    public interface IEmptiable extends ICompilationUnit {
+        boolean isEmpty();
     }
 
     public interface IExtensible<T extends ICompilationUnit> extends ICompilationUnit {
@@ -476,7 +625,7 @@ public final class CompilationUnits {
     }
 
     public interface IExecutable extends ICompilationUnit {
-        Object execute(CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException;;
+        Object execute(CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException;
     }
 
     /**
@@ -490,20 +639,25 @@ public final class CompilationUnits {
                                                                     //want to execute any by virtue to inheritance.
 
         private static final String TEXT_NODE_XPATH = "text()[1]";
-        private static final String ATTRIBUTE_MESSAGE_FORMAT = "messageFormat";
-        private static final String ATTRIBUTE_EXTRACTION_EXPRESSION = "extractionExpression";
-        private static final String ATTRIBUTE_MATCHER_GROUP = "matcherGroup";
-        private static final String ATTRIBUTE_EVAL_IF_NULL = "evalIfNull";
-        private static final String ATTRIBUTE_NODE_EXPRESSION_TOKENIZER = "nodeExpressionTokenizer";
-        private static final String ATTRIBUTE_PGVIF = "pgvif";  //call 'postGetValue inside finally'. If this attribute is defined (irrespective of its value)
-                                                                //then the postGetValue would be called inside finally. Doing so may be useful in cases where
-                                                                //the cu performs some critical function and in case of exceptions may be interested in ensuring
-                                                                //actions like logging of the event takes place.
+        protected static final String ATTRIBUTE_MESSAGE_FORMAT = "messageFormat";
+        protected static final String ATTRIBUTE_EXTRACTION_EXPRESSION = "extractionExpression";
+        protected static final String ATTRIBUTE_MATCHER_GROUP = "matcherGroup";
+        protected static final String ATTRIBUTE_EVAL_IF_NULL = "evalIfNull";
+        protected static final String ATTRIBUTE_OUTPUT_NULL_VALUE = "outputNullValue";  //true or false, used while setting attributes in map or during serialization
+        protected static final String ATTRIBUTE_NODE_EXPRESSION_TOKENIZER = "nodeExpressionTokenizer";
+        protected static final String ATTRIBUTE_PGVIF = "pgvif";  //call 'postGetValue inside finally'. If this attribute is defined (irrespective of its value)
+                                                                  //then the postGetValue would be called inside finally. Doing so may be useful in cases where
+                                                                  //the cu performs some critical function and in case of exceptions may be interested in ensuring
+                                                                  //actions like logging of the event takes place.
+        protected static final String ATTRIBUTE_EVAL_EXTENT = "evalExtent";  //recognized values are D,V,X,DV,VD,DX,XD. This would control the evaluations inside
+                                                                             //getEvaluatedValue(...) method. Not defining this attribute would enable all types
+                                                                             //of evaluations i.e. dollared, variable and xpath evaluations.
         private static final String[] ATTRIBUTES = {ATTRIBUTE_MESSAGE_FORMAT, ATTRIBUTE_EXTRACTION_EXPRESSION,
                                                     ATTRIBUTE_MATCHER_GROUP, ATTRIBUTE_EVAL_IF_NULL,
-                                                    ATTRIBUTE_NODE_EXPRESSION_TOKENIZER, ATTRIBUTE_PGVIF};
+                                                    ATTRIBUTE_OUTPUT_NULL_VALUE, ATTRIBUTE_NODE_EXPRESSION_TOKENIZER,
+                                                    ATTRIBUTE_PGVIF, ATTRIBUTE_EVAL_EXTENT};
 
-        private static final String TRUE = "true";
+        protected static final String TRUE = "true";
 
         private boolean evalIfNull = true;    //by default if the value of this ECU evaluates to null
                                               //then we would still perform the transformation, if any
@@ -514,19 +668,44 @@ public final class CompilationUnits {
                                               //and when it won't make sense to perform transformation with
                                               //a null value (e.g. inside Select CU when no criteria has
                                               //been met).
+        private boolean outputNullValue = false;  //using a separate boolean field (and not using the
+                                                  //string value of the corresponding attribute available inside
+                                                  //the attributes map for optimization/performance enhancement.
+
+        //the following boolean variables are defined for performance optimizations. They would be initialized at
+        //the time of compilation of attributes from the value of the attribute ATTRIBUTE_EVAL_EXTENT
+        private boolean evalEnabled = true;
+        private boolean xpathEvalEnabled = true;  //this would be applicable only if evalEnabled is true
+
+        private Expression evalExpression = null;
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
+        public boolean doOutputNullValue() {
+            return outputNullValue;
+        }
+
+        @Override
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || TEXT_NODE_XPATH.equals(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
+        }
+
+        @Override
+        protected void doCompileAttributes(Node n, java.util.Set<String> mergeableAttributes) throws XPathExpressionException {
+            super.doCompileAttributes(n, mergeableAttributes);
+            /*
             // compile all the attributes
             for (String attribute : ATTRIBUTES) {
                 setAttribute(
                         attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
+                        getAttributeValueIffAttributeIsDefined("@" + attribute, n),
+                        mergeableAttributes.contains(attribute));
             }
+            */
 
+            boolean textEvalEnabled = treatTextBlockAsEvalExpr();
             String textNodePathAsStr = getAttributeValueIffAttributeIsDefined(TEXT_NODE_XPATH, n);
-            if (textNodePathAsStr != null && !"".equals(textNodePathAsStr.trim())) {
-                setAttribute(TEXT_NODE_XPATH, textNodePathAsStr.trim());
+            if (textEvalEnabled && textNodePathAsStr != null && !"".equals(textNodePathAsStr.trim())) {
+                setAttribute(TEXT_NODE_XPATH, textNodePathAsStr.trim(), mergeableAttributes.contains(TEXT_NODE_XPATH));
             }
 
             initPerformanceVariables();  //initialize some attribute variables for performance optimization
@@ -543,6 +722,14 @@ public final class CompilationUnits {
                 evalIfNullTmp = "true";
             }
             evalIfNull = TRUE.equalsIgnoreCase(evalIfNullTmp);
+
+            String outputNullValueTmp = getAttribute(ATTRIBUTE_OUTPUT_NULL_VALUE);
+            if (outputNullValueTmp == null || "".equals(outputNullValueTmp)) {
+                outputNullValueTmp = "false";
+            }
+            outputNullValue = TRUE.equalsIgnoreCase(outputNullValueTmp);
+
+            initEvalExtent();
             //------------------------------------------------------------------------------
             //------------------------------------------------------------------------------
         }
@@ -603,7 +790,25 @@ public final class CompilationUnits {
                                                                             //lookup might fail as the accessor's valueof key, in case it started with $, would become eligible for
                                                                             //dynamic resolution and the value lookup might fail in that case as the value here might have been
                                                                             //mapped to a different key value.
-            compilationRuntimeContext.getInternalContext().put(thisValueIdentifier, value);
+
+            if (compilationRuntimeContext.getInternalContext() == value ||
+                !value.equals(compilationRuntimeContext.getInternalContext())) {
+                compilationRuntimeContext.getInternalContext().put(thisValueIdentifier, value);
+            } else {
+                //entering this block means that the final evaluated value of this cu is not referentially equal to the
+                //internal context map but their object equality still holds true (i.e. .equals return true). In this
+                //typical case 'value' represents a version of internal map (may be one obtained through call to
+                //CompilationRuntimeContext.getImmutableInternalContext)) and we are trying to add the same onto itself.
+                //As a result subsequently calls to methods like toString() over compilationRuntimeContext.getInternalContext()
+                //may result in StackOverflowError. To avoid this, we will create a fresh hashmap instance, add all entries
+                //of 'value' map inside it and then add this new map as value inside the internal context map so the object
+                //equality check (.equals method) of the compilationRuntimeContext.getInternalContext() and this new map
+                //would return false and we won't run into the subsequent StackOverflowError(s).
+
+                java.util.Map<String, Object> cmap = new HashMap<>();
+                cmap.putAll((java.util.Map<String, Object>) value);  //not expecting any class cast exception here
+                compilationRuntimeContext.getInternalContext().put(thisValueIdentifier, cmap);
+            }
         }
         /************************************************************************************/
         /************** End - pre and post processing methods of getValue(...) **************/
@@ -740,118 +945,94 @@ public final class CompilationUnits {
         //declared inside the internal context of CompilationRuntimeContext.
         protected Object getEvaluatedValue(CompilationRuntimeContext compilationRuntimeContext,
                                                         Object thisValue) throws XPathExpressionException {
-            String nodeTextExpression = getAttribute(TEXT_NODE_XPATH);
+            String nodeTextExpression = getEvalText();  //getAttribute(TEXT_NODE_XPATH);
             if (nodeTextExpression == null || "".equals(nodeTextExpression.trim())
                                            || SKIP_EVALUATION.equals(nodeTextExpression.trim())) {
                 return thisValue;
             }
 
-            /***********************************************************************************************/
-            //added support to return object values using the $ed attribute computation framework
-            //4th May, 20
-            if (CompilationUnit.isAttributeValueDynamic(nodeTextExpression.trim())) {
-                return _dollaredEvaluation(compilationRuntimeContext,
-                                           thisValue,
-                                           nodeTextExpression.trim(),
-                                           getAttribute(ATTRIBUTE_NODE_EXPRESSION_TOKENIZER));
-            }
-            /***********************************************************************************************/
-
-            java.util.Map<String, Object> declaredVariables = compilationRuntimeContext.getInternalContext();
-
-            //nodeTextExpression = nodeTextExpression.replaceAll("\\bthis\\b", "'" + thisValue + "'");  //update any
-                                                                                                      //references
-                                                                                                      //to 'this'
-            //commented the above line and provided the below line of code. No implicit enclosing of
-            //thisValue with single quotes would be done as that causes problems in case the value itself contains
-            //single quotes. If the value needs to be enclosed with single quotes or double quotes then do so at
-            //the source itself i.e. at the time of defining the expression inside the xml.
-            nodeTextExpression = nodeTextExpression.replaceAll("\\bthis\\b", Matcher.quoteReplacement("" + thisValue));  //update any
-                                                                                                                         //references
-                                                                                                                         //to 'this'
-            if (declaredVariables != null) {
-                for (Entry<String, Object> entry : declaredVariables.entrySet()) {
-                    String key = entry.getKey();
-                    Object value = entry.getValue();
-                    if (value != null) {
-                        //nodeTextExpression = nodeTextExpression.replaceAll("\\b" + key + "\\b", "'" + value + "'");
-
-                        //commented the above line and provided the below line of code. No implicit enclosing of
-                        //thisValue with single quotes would be done as that causes problems in case the value itself contains
-                        //single quotes. If the value needs to be enclosed with single quotes or double quotes then do so at
-                        //the source itself i.e. at the time of defining the expression inside the xml.
-                        nodeTextExpression = nodeTextExpression.replaceAll("\\b\\Q" + key + "\\E\\b", Matcher.quoteReplacement("" + value));
+            Object returnValue = thisValue;
+            if (_evalEnabled()) {
+                Expression evalExpression = getEvalExpression();
+                if (evalExpression != null) {
+                    ExpressionRuntimeContext erc = ExpressionRuntimeContext.newInstance(this, compilationRuntimeContext).
+                                                       setAdditionalContext(ExpressionRuntimeContext.ADDITIONAL_CONTEXT_THIS_VALUE, thisValue);
+                    if (_xpathEvalEnabled()) {
+                        erc.setAdditionalContext(ExpressionRuntimeContext.ADDITIONAL_CONTEXT_NODE, getNodeContext()).
+                            setAdditionalContext(ExpressionRuntimeContext.ADDITIONAL_CONTEXT_XPATH, CompilationUnits.XPATH);
                     }
+                    returnValue = evalExpression.getValue(erc);
                 }
             }
-            //TODO change evaluation scheme to one using XPathVariableResolver.
-            return CompilationUnits.XPATH.evaluate(
-                                  nodeTextExpression, getNodeContext(), XPathConstants.STRING);
+
+            return returnValue;
         }
 
-        //4th May, 20
-        private Object _dollaredEvaluation(CompilationRuntimeContext compilationRuntimeContext,
-                                           Object thisValue,
-                                           String trimmedNodeTextExpression,
-                                           String expressionTokenizer) throws XPathExpressionException {
-            String tokenizer = expressionTokenizer == null? "\\s+": expressionTokenizer;
-            String[] tokens = Pattern.compile(tokenizer).split(trimmedNodeTextExpression);
-            LinkedList<Object> elements = null;
-            int i = 0;
-            final byte ARRAY = 0, CONCAT = 1, FUNCTION = 2;
-            byte INTENT = ARRAY;
-            for (String token: tokens) {
-                Object cav = computeAttributeValue(token, compilationRuntimeContext, false, true);
-                                                        //the last parameter is set to true to accept null computation values
-                                                        //OR shall we set it to false to return the nodeExpression as is if
-                                                        //the computation results in a null value?
-                if (i == 0) {
-                    if ("$$$".equals(cav)) {
-                        INTENT = FUNCTION;
-                    } else if ("$$".equals(cav)) {
-                        INTENT = CONCAT;
-                    }
-                }
-                if (i == 0 && ("$".equals(cav) || "$$".equals(cav) || "$$$".equals(cav))) {
-                    continue;  //we will just treat starting $ or $$, if it exists independently, as just the intent specifier
-                }
-
-                if (elements == null) {
-                    elements = new LinkedList<>();
-                }
-
-                if (cav == null && "$this".equals(token)) {  //even if the token was $this first preference is given to resolving it
-                                                             //using the $ed attribute computation framework. If that returns
-                                                             //a null value it would be assigned the value of self.
-                    cav = thisValue;
-                }
-                elements.add(cav);
+        protected Expression getEvalExpression() {
+            if (evalExpression != null) {
+                return evalExpression;
             }
-            if (elements != null) {
-                switch(INTENT) {
-                    case ARRAY: {
-                                    return elements.size() == 1? elements.getFirst(): elements.toArray(new Object[0]);
-                                }
-                    case CONCAT:{
-                                    StringBuilder sb = new StringBuilder();
-                                    elements.forEach(sb::append);
-                                    return sb.toString();
-                                }
-                    case FUNCTION:{
-                                      Object[] objs = elements.toArray(new Object[0]);
-                                      Object funcId = objs.length > 0? objs[0]: null;
-                                      Object[] funcParams = objs.length > 1? Arrays.copyOfRange(objs, 1, objs.length): new Object[0];
-                                      IFunction func = FunctionResolver.resolve(funcId);
-                                      try {
-                                          return func == null? null: func.invoke(funcParams, compilationRuntimeContext);
-                                      } catch (Exception e) {
-                                          throw new RuntimeException(e);
-                                      }
-                                  }
-                }
+            String evalText = getEvalText();
+            if (evalText == null) {
+                return null;
             }
-            return null;
+            evalExpression = EL.parse(evalText);
+            return evalExpression;
         }
+
+        protected String getEvalText() {
+            return getAttribute(TEXT_NODE_XPATH);
+        }
+
+        private String getEvalExtent() {
+            return getAttribute(ATTRIBUTE_EVAL_EXTENT);
+        }
+
+        /********************************************************************************/
+        /********** Controller functions for controlling the evaluation extent **********/
+        /******************************* 6th Feb, 21 ************************************/
+        /** Valid values are D, V, X, DV, VD, DX, XD where:
+
+              D, DV, VD, DX, XD would enable dollered evaluation
+              V, X, DV, VD, DX, XD would enable variable evaluation
+              X, DX, XD would enable XPath evaluation
+
+              Note: XPath evaluation would always result in prior variable evaluation.
+         **/
+        private void initEvalExtent() {
+            String evalExtent = getEvalExtent();  //getAttribute(ATTRIBUTE_EVAL_EXTENT);
+            if (evalExtent == null) {
+                evalEnabled = true;
+                xpathEvalEnabled = true;
+            } else {
+                boolean dollaredEvalEnabled = "D".equalsIgnoreCase(evalExtent) ||
+                                              "DV".equalsIgnoreCase(evalExtent) ||
+                                              "VD".equalsIgnoreCase(evalExtent) ||
+                                              "DX".equalsIgnoreCase(evalExtent) ||
+                                              "XD".equalsIgnoreCase(evalExtent);
+                boolean variableEvalEnabled = "V".equalsIgnoreCase(evalExtent) ||
+                                              "DV".equalsIgnoreCase(evalExtent) ||
+                                              "VD".equalsIgnoreCase(evalExtent) ||
+                                              "DX".equalsIgnoreCase(evalExtent) ||
+                                              "XD".equalsIgnoreCase(evalExtent) ||
+                                              "X".equalsIgnoreCase(evalExtent);
+                xpathEvalEnabled = "X".equalsIgnoreCase(evalExtent) ||
+                                   "DX".equalsIgnoreCase(evalExtent) ||
+                                   "XD".equalsIgnoreCase(evalExtent);
+                evalEnabled = dollaredEvalEnabled || variableEvalEnabled || xpathEvalEnabled;
+            }
+        }
+
+        private boolean _evalEnabled() {
+            return evalEnabled;
+        }
+
+        private boolean _xpathEvalEnabled() {
+            return xpathEvalEnabled;
+        }
+        /********************************************************************************/
+        /********************************************************************************/
+
 
         protected abstract Object doGetValue(CompilationRuntimeContext compilationRuntimeContext)
                                                                             throws XPathExpressionException;
@@ -867,11 +1048,10 @@ public final class CompilationUnits {
                                                         extends EvaluableCompilationUnit implements IExtensible<T> {
 
         //private static final String CHILDREN_XPATH = "./extends";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Extends.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Extends.TAG_NAME});
 
         private List<Extends> extensions = null;
-        private boolean extensionsProcessed = true;
-        private boolean firstTime = true;
+        private boolean extensionsProcessed = false;
 
         @Override
         protected void doCompileChildren(Node n) throws XPathExpressionException {
@@ -886,6 +1066,26 @@ public final class CompilationUnits {
         }
 
         @Override
+        protected void postCompileChildren(Node n) throws XPathExpressionException {
+            super.postCompileChildren(n);
+            try {
+                String nodeName = UtilityFunctions.getLocalOrNodeName(n);
+                String namespaceURI = n.getNamespaceURI();
+                String cuBodyTemplateId = NamespaceDynamicTemplatesHandler.getCuBodyTemplateId(nodeName, namespaceURI);
+                if (cuBodyTemplateId != null) {
+                    Extends _extends = Extends.newInstance(n.getOwnerDocument().createElement(Extends.TAG_NAME), cuBodyTemplateId);
+                    if (_extends != null) {
+                        extensions.add(0, _extends);
+                    } else {
+                        //TODO log
+                    }
+                }
+            } catch (org.cuframework.TemplateCompilationException tce) {
+                throw new RuntimeException(tce);
+            }
+        }
+
+        @Override
         protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
             if (cu instanceof Extends) {
                 extensions.add((Extends) cu);
@@ -893,8 +1093,9 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName);
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(Extends.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -950,44 +1151,12 @@ public final class CompilationUnits {
         @SuppressWarnings("unchecked")
         public final T extend(CompilationRuntimeContext compilationRuntimeContext,
                 CompiledTemplatesRegistry mctr) throws XPathExpressionException {
-            if (!firstTime && extensionsProcessed) {
+            if (extensionsProcessed) {
                 return (T) this;
             } else {
                 T extendedCU = doExtend(compilationRuntimeContext, mctr);
-                firstTime = false;
                 return extendedCU;
             }
-        }
-
-        //This method provides support for dynamic resolution of the CU identifier. Any identifier starting with
-        //special characters (e.g. '$') would be dynamically computed. This method comes into picture basically
-        //during inheritance processing but now this is also used to extract the group name while
-        //serializing the group.
-        public String getIdOrElse(CompilationRuntimeContext compilationRuntimeContext)
-                                                                            throws XPathExpressionException {
-            String computedIdOrElse = getIdOrElse();  //initialize the identifier with the uncomputed value
-            /*
-                //Let's not trim the identifier and expect that the same is provided correctly inside the
-                //xml file. Trimming might bring in inconsistency between the values returned by non-parameterized
-                //getIdOrElse() method and this method in case the computation wasn't required (e.g. when the
-                //identifier string didn't start with $) or when the computation failed (e.g. when no child cu
-                //corresponding to the referenced identifier is found). In such cases the value returned by
-                //non-parameterized getIdOrElse() method should be returned as is without any trimming/modifications.
-                computedIdOrElse = computedIdOrElse != null ? computedIdOrElse.trim() : computedIdOrElse;
-            */
-            /* if (isIdOrElseDynamic(computedIdOrElse)) {
-                //ids starting with '$' has special meaning and needs to be resolved to the value
-                //returned by one of the child elements.
-                if (computedIdOrElse.length() > 1) {
-                    String referencedChildId = computedIdOrElse.substring(1);
-                    ICompilationUnit childCU = getChild(referencedChildId);
-                    if (childCU instanceof IEvaluable) {
-                        computedIdOrElse = (String) ((IEvaluable) childCU).getValue(compilationRuntimeContext);
-                    }
-                }
-            }
-            return computedIdOrElse; */
-            return computeAttributeValue(computedIdOrElse, compilationRuntimeContext);
         }
 
         protected boolean isIdOrElseDynamic() {
@@ -995,8 +1164,10 @@ public final class CompilationUnits {
         }
 
         protected boolean isIdOrElseDynamic(String rawIdOrElse) {
-            //return rawIdOrElse != null && rawIdOrElse.startsWith("$");  //'$' is at index 0
-            return CompilationUnit.isAttributeValueDynamic(rawIdOrElse);
+            //return CompilationUnit.isAttributeValueDynamic(rawIdOrElse);
+            return getComputationHelper().
+                          isAttributeDynamic(CompilationUnitComputationHelper.VIRTUAL_ATTRIBUTE_ID_OR_ELSE,
+                                             rawIdOrElse);
         }
 
         protected abstract T doExtend(CompilationRuntimeContext compilationRuntimeContext,
@@ -1025,22 +1196,21 @@ public final class CompilationUnits {
         private static final String[] ATTRIBUTES = {ATTRIBUTE_META_EXPRESSION, ATTRIBUTE_VALUE};
         //private static final String CHILDREN_XPATH = "./condition";
         //private static final String CHILDREN_XPATH2 = "./valueof | ./get | ./select";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[] {Condition.TAG_NAME, ValueOf.TAG_NAME, Get.TAG_NAME, Select.TAG_NAME});
+        /* private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(
+                                                                      new String[]{Condition.TAG_NAME, ValueOf.TAG_NAME, Get.TAG_NAME, Select.TAG_NAME}); */
 
         private List<Condition> conditions = null;
         //private EvaluableCompilationUnit evaluable = null;
         private IEvaluable evaluable = null;
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            super.doCompileAttributes(n);
+        public String getTagName() {
+            return Conditional.TAG_NAME;
+        }
 
-            // compile all the attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
-            }
+        @Override
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
         }
 
         @Override
@@ -1067,9 +1237,11 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName) ||
-                   CompilationUnits.isAssignableFrom(IEvaluable.class, CompilationUnits.getCompilationClassForTag(tagName));
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(ICondition.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(IEvaluable.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -1143,24 +1315,19 @@ public final class CompilationUnits {
         private static final String ATTRIBUTE_EXPRESSION = "expression";
         private static final String[] ATTRIBUTES = {ATTRIBUTE_EXPRESSION};
         //private static final String CHILDREN_XPATH = "./valueof | ./get";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{ValueOf.TAG_NAME, Get.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{ValueOf.TAG_NAME, Get.TAG_NAME});
 
         //private ValueOf valueOf = null;
         private IEvaluable evaluable = null;
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            // compile all the attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
-            }
+        public String getTagName() {
+            return Condition.TAG_NAME;
         }
 
         @Override
-        protected void doCompileChildren(Node n) throws XPathExpressionException {
-            super.doCompileChildren(n);
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
         }
 
         @Override
@@ -1176,9 +1343,9 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            //return RECOGNIZED_CHILD_TAGS.contains(tagName);
-            return CompilationUnits.isAssignableFrom(IEvaluable.class, CompilationUnits.getCompilationClassForTag(tagName)); 
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(IEvaluable.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -1228,10 +1395,16 @@ public final class CompilationUnits {
         private static final String[] ATTRIBUTES = {ATTRIBUTE_KEY, ATTRIBUTE_DEFAULT_VALUE};
         //private static final String CHILDREN_XPATH = "./map | ./internal-map";
         //private static final String CHILDREN_XPATH2 = "./on";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Map.TAG_NAME, InternalMap.TAG_NAME, Json.TAG_NAME, On.TAG_NAME});
+        /* private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(
+                                                                        new String[]{Map.TAG_NAME, InternalMap.TAG_NAME, Json.TAG_NAME, On.TAG_NAME}); */
 
         private List<Map> maps = null;
         private On on = null;  //'on' condition would be used only if there are no map entries defined.
+
+        @Override
+        public String getTagName() {
+            return ValueOf.TAG_NAME;
+        }
 
         private String getKey(CompilationRuntimeContext compilationRuntimeContext) {
             String key = null;
@@ -1245,15 +1418,8 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            super.doCompileAttributes(n);
-
-            // compile all the attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
-            }
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
         }
 
         @Override
@@ -1277,8 +1443,11 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName);
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(Map.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(On.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -1368,26 +1537,19 @@ public final class CompilationUnits {
         private static final String ATTRIBUTE_DEFAULT_VALUE = "default";
         private static final String[] ATTRIBUTES = {ATTRIBUTE_DEFAULT_VALUE};
 
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[] {On.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{On.TAG_NAME});
 
         private IEvaluable evaluable = null;
         private On on = null;
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            super.doCompileAttributes(n);
-
-            // compile all the attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
-            }
+        public String getTagName() {
+            return TypeOf.TAG_NAME;
         }
 
         @Override
-        protected void doCompileChildren(Node n) throws XPathExpressionException {
-            super.doCompileChildren(n);
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
         }
 
         @Override
@@ -1403,9 +1565,11 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName) ||
-                   CompilationUnits.isAssignableFrom(IEvaluable.class, CompilationUnits.getCompilationClassForTag(tagName));
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(IEvaluable.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(On.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -1465,9 +1629,14 @@ public final class CompilationUnits {
         private static final String ATTRIBUTE_KEY_DELIMITER = "keyDelimiter";  //to be used to extract the hierarchy of keys
         private static final String[] ATTRIBUTES = {ATTRIBUTE_NAME, ATTRIBUTE_CONTEXT, ATTRIBUTE_KEY_DELIMITER};
         //private static final String CHILDREN_XPATH = "./on";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{On.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{On.TAG_NAME});
 
         private On on = null;
+
+        @Override
+        public String getTagName() {
+            return Map.TAG_NAME;
+        }
 
         String getName(CompilationRuntimeContext compilationRuntimeContext) {
             String name = null;
@@ -1489,18 +1658,8 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            // compile all the attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
-            }
-        }
-
-        @Override
-        protected void doCompileChildren(Node n) throws XPathExpressionException {
-            super.doCompileChildren(n);
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
         }
 
         @Override
@@ -1512,8 +1671,9 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName);
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(On.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -1622,9 +1782,15 @@ public final class CompilationUnits {
         public static final String TAG_NAME = "internal-map";
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            super.doCompileAttributes(n);
-            setAttribute(ATTRIBUTE_CONTEXT, INTERNAL_CONTEXT);  //set the map context to internal irrespective of the value defined in the source xml.
+        public String getTagName() {
+            return InternalMap.TAG_NAME;
+        }
+
+        @Override
+        protected void doCompileAttributes(Node n, java.util.Set<String> mergeableAttributes) throws XPathExpressionException {
+            super.doCompileAttributes(n, mergeableAttributes);
+            setAttribute(ATTRIBUTE_CONTEXT, INTERNAL_CONTEXT, false);  //set the map context to internal irrespective
+                                                                       //of the value defined in the source xml.
         }
     }
 
@@ -1633,6 +1799,11 @@ public final class CompilationUnits {
 
         private static final String ATTRIBUTE_CONTAINER = "container";
         private static final String[] ATTRIBUTES = {ATTRIBUTE_CONTAINER};
+
+        @Override
+        public String getTagName() {
+            return Json.TAG_NAME;
+        }
 
         private String getContainer(CompilationRuntimeContext compilationRuntimeContext) {
             String container = null;
@@ -1646,15 +1817,8 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            super.doCompileAttributes(n);
-
-            // compile all the attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
-            }
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
         }
 
         @Override
@@ -1757,12 +1921,13 @@ public final class CompilationUnits {
         public static final String TAG_NAME = "on";
 
         //private static final String CHILDREN_XPATH = "./conditional | ./condition";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Conditional.TAG_NAME, Condition.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Conditional.TAG_NAME, Condition.TAG_NAME});
 
         private ICondition condition = null;
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
+        public String getTagName() {
+            return On.TAG_NAME;
         }
 
         @Override
@@ -1774,8 +1939,9 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName);
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(ICondition.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -1783,18 +1949,6 @@ public final class CompilationUnits {
             if (idOrElseOfChild == null) {
                 return null;
             }
-            /*String idOrElseOfCondition = null;
-            if (condition instanceof Condition) {
-                idOrElseOfCondition = ((Condition) condition).getIdOrElse();
-                if (idOrElseOfChild.equals(idOrElseOfCondition)) {
-                    return (Condition) condition;
-                }
-            } else if (condition instanceof Conditional) {
-                idOrElseOfCondition = ((Conditional) condition).getIdOrElse();
-                if (idOrElseOfChild.equals(idOrElseOfCondition)) {
-                    return (Conditional) condition;
-                }
-            }*/
             if (condition != null && idOrElseOfChild.equals(condition.getIdOrElse())) {
                 return condition;
             }
@@ -1805,10 +1959,10 @@ public final class CompilationUnits {
         @SuppressWarnings("unchecked")
         public <T extends ICompilationUnit> T[] getChildren(Class<T> type) {
             ICondition[] conditionArray = null;
-            if (condition instanceof Condition) {
-                conditionArray = getElementAsUnitArray((Condition) condition, type);
-            } else if (condition instanceof Conditional) {
+            if (condition instanceof Conditional) {
                 conditionArray = getElementAsUnitArray((Conditional) condition, type);
+            } else if (condition instanceof Condition) {
+                conditionArray = getElementAsUnitArray((Condition) condition, type);
             }
             return (T[]) (conditionArray == null ? getZeroLengthArrayOfType(type) : conditionArray);
         }
@@ -1827,6 +1981,233 @@ public final class CompilationUnits {
             return clonedOn;
         }
         /**************************************************************************************/
+    }
+
+    public static class TextBlock extends EvaluableCompilationUnit implements IEvaluable, IEmptiable {
+        public static final String TAG_NAME = "#text";
+
+        private String text = null;
+
+        @Override
+        public String getTagName() {
+            return TextBlock.TAG_NAME;
+        }
+
+        public String getText() {
+            return this.text;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return text == null || "".equals(text);
+        }
+
+        @Override
+        public boolean isAttributeNative(String attr) {
+            return true;  //a text block cannot logically have any attributes and let's just return true from this method to skip the
+                          //attribute serialization attempt by some specific Serializers (like the ones that serialize the source).
+        }
+
+        @Override
+        protected java.util.Set<String> doInitDefaultConfigAttributes(Node n) throws XPathExpressionException {
+            String attribute = ATTRIBUTE_EVAL_EXTENT;
+            setAttribute(attribute, "DV", false);  //default the eval scope of TextBlock cu to dollared and variable evaluation
+
+            return super.doInitDefaultConfigAttributes(n);  //attempt to set the default config attributes
+        }
+
+        @Override
+        protected void doCompileAttributes(Node n, java.util.Set<String> mergeableAttributes) throws XPathExpressionException {
+            //-----------------------------------------------------------------------------------------
+            String[] attributesToInheritFromParentNode = {ATTRIBUTE_MESSAGE_FORMAT, ATTRIBUTE_EXTRACTION_EXPRESSION,
+                                                          ATTRIBUTE_MATCHER_GROUP, ATTRIBUTE_EVAL_IF_NULL,
+                                                          ATTRIBUTE_OUTPUT_NULL_VALUE, ATTRIBUTE_NODE_EXPRESSION_TOKENIZER,
+                                                          ATTRIBUTE_PGVIF, ATTRIBUTE_EVAL_EXTENT};
+            for (String attribute: attributesToInheritFromParentNode) {
+                setAttribute(
+                            attribute,
+                            getAttributeValueIffAttributeIsDefined("parent::*/@" + attribute, n),
+                            mergeableAttributes.contains(attribute));  //Set specific attributes of this TextBlock cu
+                                                                       //with the value of the parent attribute if one
+                                                                       //is defined
+            }
+            //-----------------------------------------------------------------------------------------
+
+            super.doCompileAttributes(n, mergeableAttributes);
+            text = n.getNodeValue();
+            if (text != null) {
+                text = text.trim();
+            }
+        }
+
+        @Override
+        protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
+            //nothing to do
+        }
+
+        @Override
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return false;  //no children to be recognised of its own.
+        }
+
+        @Override
+        public ICompilationUnit getChild(String idOrElseOfChild) {
+            return null;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T extends ICompilationUnit> T[] getChildren(Class<T> type) {
+            return (T[]) getZeroLengthArrayOfType(type);
+        }
+
+        @Override
+        protected Object doGetValue(CompilationRuntimeContext compilationRuntimeContext)
+                                                                           throws XPathExpressionException {
+            return this.text;
+        }
+
+        @Override
+        protected String getEvalText() {
+            return this.text;
+        }
+    }
+
+    public static class CuText extends EvaluableCompilationUnit implements IEvaluable, IEmptiable {
+        public static final String TAG_NAME = "cu-text";
+
+        private static final String ATTRIBUTE_ON_TREATMENT = "on";  //valid values: ser|exec|serexec.
+                                                                    //ser = serialize the On CU block
+                                                                    //exec = execute the On CU block
+                                                                    //serexec = serialize as well as execute
+        private static final String[] ATTRIBUTES = {ATTRIBUTE_ON_TREATMENT};
+
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{On.TAG_NAME});
+
+        private String text = null;
+
+        private On on = null;
+        private boolean executeTheOnCU = false;
+        private boolean serializeTheOnCU = false;
+
+        @Override
+        public String getTagName() {
+            return CuText.TAG_NAME;
+        }
+
+        public String getText() {
+            return this.text;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return text == null || "".equals(text);
+        }
+
+        @Override
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
+        }
+
+        @Override
+        protected boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
+                                                                     throws XPathExpressionException {
+            return on == null || on.satisfies(compilationRuntimeContext);
+        }
+
+        @Override
+        protected java.util.Set<String> doInitDefaultConfigAttributes(Node n) throws XPathExpressionException {
+            String attribute = ATTRIBUTE_EVAL_EXTENT;
+            setAttribute(attribute, "N", false);  //by default let's not enable any eval. Specifying any value other than those that
+                                                  //correspond to dollared, variable and xpath evaluations would mean no evaluation at all.
+
+            return super.doInitDefaultConfigAttributes(n);  //attempt to set the default config attributes
+        }
+
+        @Override
+        protected void doCompileChildren(Node n) throws XPathExpressionException {
+            super.doCompileChildren(n);
+            java.util.Map<String, List<String>> excludeNamespaceNodes = null;
+            if (!serializeTheOnCU) {
+                excludeNamespaceNodes = new HashMap<String, List<String>>();
+                excludeNamespaceNodes.put(n.getNamespaceURI(),
+                                                Arrays.asList(new String[]{On.TAG_NAME}));  //the actual namespace uri of the node, as per
+                                                                                            //the cu xml template, should be passed as key to
+                                                                                            //ensure that the inclusion/omission of the 'on'
+                                                                                            //cu during serialization is expectedly performed
+                                                                                            //inside the util method. We reached here only
+                                                                                            //because the root ns is inherited by all other
+                                                                                            //namespaces, and, because none of them would have
+                                                                                            //provided a custom cu impl matching the node/tag name
+                                                                                            //but that doesn't mean the node belongs to the
+                                                                                            //default/root ns inside the cu xml template.
+                                                                                            //The runtime ns uri of this node, when inspected
+                                                                                            //inside the util class could be different than null
+                                                                                            //(or the root ns uri) and, if not passed as key of
+                                                                                            //this node exclusion map, result in a buggy
+                                                                                            //serialization behavior wrt excluding nodes.
+            }
+            text = UtilityFunctions.serializeChildNodesToString(n, excludeNamespaceNodes);  //choosing to serialize the children and not
+                                                                                            //the node itself. If for some reason this node
+                                                                                            //also is to be serialized then have a similar
+                                                                                            //node defined and added as a child to this node
+                                                                                            //so the end result is closer to desired.
+            if (text != null) {
+                text = text.trim();
+            }
+        }
+
+        @Override
+        protected void initPerformanceVariables() {
+            super.initPerformanceVariables();
+            String ont = getAttribute(ATTRIBUTE_ON_TREATMENT);
+            executeTheOnCU = ont == null || "exec".equalsIgnoreCase(ont) || "serexec".equalsIgnoreCase(ont);  //by default On execution is enabled
+            serializeTheOnCU = ont != null && ("ser".equalsIgnoreCase(ont) || "serexec".equalsIgnoreCase(ont));
+        }
+
+        @Override
+        protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
+            if ((cu instanceof On) && (on == null)) {
+                //we need just one 'on' cu and in case of many defined, let's just retain the first instance that we got.
+                on = (On) cu;
+            }
+        }
+
+        @Override
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return executeTheOnCU &&
+                   CompilationUnits.isAssignableFrom(On.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
+        }
+
+        @Override
+        public ICompilationUnit getChild(String idOrElseOfChild) {
+            if (idOrElseOfChild == null) {
+                return null;
+            }
+            if (on != null && idOrElseOfChild.equals(on.getIdOrElse())) {
+                return on;
+            }
+            return null;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T extends ICompilationUnit> T[] getChildren(Class<T> type) {
+            On[] onArray = getElementAsUnitArray(on, type);
+            return (T[]) (onArray == null ? getZeroLengthArrayOfType(type) : onArray);
+        }
+
+        @Override
+        protected Object doGetValue(CompilationRuntimeContext compilationRuntimeContext)
+                                                                           throws XPathExpressionException {
+            return this.text;
+        }
+
+        @Override
+        protected String getEvalText() {
+            return this.text;
+        }
     }
 
     public static class Group extends ExtensibleCompilationUnit<Group> {
@@ -1862,6 +2243,7 @@ public final class CompilationUnits {
         }
 
         private static final String DEFAULT_SERIALIZATION_QUOTATION_MARKS = "\"";  //using double quotes by default
+        private static final String PARAM_GROUP_SERIALIZER_TYPE = "group-serializer-type";
 
         private static final String ATTRIBUTE_NAME = "name";
         private static final String ATTRIBUTE_TYPE = "type";
@@ -1881,10 +2263,10 @@ public final class CompilationUnits {
         //private static final String CHILDREN_XPATH = "./set | ./group";
         //private static final String CHILDREN_XPATH2 = "./init";
         //private static final String CHILDREN_XPATH3 = "./on";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Set.TAG_NAME, Group.TAG_NAME, Init.TAG_NAME, Finally.TAG_NAME, On.TAG_NAME});
+        /* private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(
+                                                                       new String[]{Set.TAG_NAME, Group.TAG_NAME, Init.TAG_NAME, Finally.TAG_NAME, On.TAG_NAME}); */
 
-        private List<Set> sets = null;
-        private List<Group> groups = null;
+        private List<ICompilationUnit> children = null;
         private Init init = null;
         private Finally finallyy = null;
         private On on = null;  //'on' condition, if present, must be satisfied in order for this Group CU to execute.
@@ -1924,20 +2306,33 @@ public final class CompilationUnits {
                                              //The value of this variable should always be set internally and not based on attribute values.
                                              //Also it's setter method should not be provided.
 
+        @Override
+        public String getTagName() {
+            return Group.TAG_NAME;
+        }
+
         public final boolean isHeadless() {
             return isHeadless;
         }
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            super.doCompileAttributes(n);
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
+        }
 
+        @Override
+        protected void doCompileAttributes(Node n, java.util.Set<String> mergeableAttributes) throws XPathExpressionException {
+            super.doCompileAttributes(n, mergeableAttributes);
+
+            /*
             // compile all the attributes
             for (String attribute : ATTRIBUTES) {
                 setAttribute(
                         attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
+                        getAttributeValueIffAttributeIsDefined("@" + attribute, n),
+                        mergeableAttributes.contains(attribute));
             }
+            */
 
             initPerformanceVariables();  //initialize some attribute variables for performance optimization
         }
@@ -1978,15 +2373,10 @@ public final class CompilationUnits {
 
         @Override
         protected void doCompileChildren(Node n) throws XPathExpressionException {
-            sets = new LinkedList<Set>();  //since mostly we would be operating
-                                           //sequentially so
-                                           //LinkedList would be an optimal
-                                           //choice
-            groups = new LinkedList<Group>();  //since mostly we would be operating
-                                           //sequentially so
-                                           //LinkedList would be an optimal
-                                           //choice
-
+            children = new LinkedList<ICompilationUnit>();  //since mostly we would be operating
+                                                            //sequentially so
+                                                            //LinkedList would be an optimal
+                                                            //choice
             super.doCompileChildren(n);
         }
 
@@ -1994,10 +2384,16 @@ public final class CompilationUnits {
         protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
             super.doAddCompiledUnit(tagName, cu);
 
+            if (cu instanceof Extends) {
+                return;  //returning because extends would have already been added by call to super.
+            }
+
             if (cu instanceof Set) {
-                sets.add((Set) cu);
+                children.add(cu);
             } else if (cu instanceof Group) {
-                groups.add((Group) cu);
+                children.add(cu);
+            } else if (cu instanceof IEvaluable) {
+                children.add(cu);
             } else if ((cu instanceof Finally) && (finallyy == null)) {  //finally should be checked before init as it is a subclass of Init
                 //we need just one 'finally' cu and in case of many defined, let's just retain the first instance that we got.
                 finallyy = (Finally) cu;
@@ -2011,12 +2407,16 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return super.isChildTagRecognized(tagName) || RECOGNIZED_CHILD_TAGS.contains(tagName) ||
-                                                          CompilationUnits.isAssignableFrom(Set.class, CompilationUnits.getCompilationClassForTag(tagName)) ||
-                                                          //Set.class.isAssignableFrom(CompilationUnits.getCompilationClassForTag(tagName)) ||
-                                                          CompilationUnits.isAssignableFrom(Group.class, CompilationUnits.getCompilationClassForTag(tagName));
-                                                          //Group.class.isAssignableFrom(CompilationUnits.getCompilationClassForTag(tagName));
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return super.isChildTagRecognized(tagNamespaceURI, tagName) ||
+                   CompilationUnits.isAssignableFrom(Init.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(Finally.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(IEvaluable.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(On.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         public GroupType getType() {
@@ -2108,17 +2508,10 @@ public final class CompilationUnits {
             if (on != null && idOrElseOfChild.equals(on.getIdOrElse())) {
                 return on;
             }
-            if (sets != null) {
-                for (Set set : sets) {
-                    if (idOrElseOfChild.equals(set.getIdOrElse())) {
-                        return set;
-                    }
-                }
-            }
-            if (groups != null) {
-                for (Group grp : groups) {
-                    if (idOrElseOfChild.equals(grp.getIdOrElse())) {
-                        return grp;
+            if (children != null) {
+                for (ICompilationUnit child : children) {
+                    if (idOrElseOfChild.equals(child.getIdOrElse())) {
+                        return child;
                     }
                 }
             }
@@ -2132,14 +2525,18 @@ public final class CompilationUnits {
             if (superChildrenByType != null) {
                 return (T[]) superChildrenByType;
             }
-            Set[] setsArray = areMatchingTypes(Set.class, type) ? getElementsFromList(sets, new Set[0]) : null;
-            if (setsArray != null) {
-                return (T[]) setsArray;
-            }
-            Group[] groupsArray = areMatchingTypes(Group.class, type) ?
-                                                              getElementsFromList(groups, new Group[0]) : null;
-            if (groupsArray != null) {
-                return (T[]) groupsArray;
+            if (areMatchingTypes(ICompilationUnit.class, type)) {
+                ICompilationUnit[] allChildren = getElementsFromList(children, ICompilationUnit.class, new ICompilationUnit[0]);
+                return (T[]) (allChildren == null? getZeroLengthArrayOfType(type): allChildren);
+            } else if (areMatchingTypes(IEvaluable.class, type)) {
+                IEvaluable[] evaluableChildren = getElementsFromList(children, IEvaluable.class, new IEvaluable[0]);
+                return (T[]) (evaluableChildren == null? getZeroLengthArrayOfType(type): evaluableChildren);
+            } else if (areMatchingTypes(Set.class, type)) {
+                Set[] sets = getElementsFromList(children, Set.class, new Set[0]);
+                return (T[]) (sets == null? getZeroLengthArrayOfType(type): sets);
+            } else if (areMatchingTypes(Group.class, type)) {
+                Group[] groups = getElementsFromList(children, Group.class, new Group[0]);
+                return (T[]) (groups == null? getZeroLengthArrayOfType(type): groups);
             }
             Finally[] finallyArray = getElementAsUnitArray(finallyy, type);
             if (finallyArray != null) {
@@ -2156,14 +2553,27 @@ public final class CompilationUnits {
         /********************************************************************************************************/
         /*****************************************Finder Methods*************************************************/
         private Group findChildGroup(String idOrElse) {
-            return findChild(idOrElse, groups);
+            return findChild(idOrElse, getChildren(Group.class));
         }
 
         private Set findChildSet(String idOrElse) {
-            return findChild(idOrElse, sets);
+            return findChild(idOrElse, getChildren(Set.class));
         }
 
-        private <C extends ICompilationUnit, T extends List<C>> C findChild(String idOrElse, T childList) {
+        /* private <C extends ICompilationUnit, T extends List<C>> C findChild(String idOrElse, T childList) {
+            if (idOrElse == null || "".equals(idOrElse)) {
+                return null;
+            }
+            for (C child : childList) {
+                String subChildIdOrElse = child.getIdOrElse();
+                if (idOrElse.equals(subChildIdOrElse)) {
+                    return child;
+                }
+            }
+            return null;
+        } */
+
+        private <C extends ICompilationUnit> C findChild(String idOrElse, C[] childList) {
             if (idOrElse == null || "".equals(idOrElse)) {
                 return null;
             }
@@ -2209,10 +2619,8 @@ public final class CompilationUnits {
             clonedGrp.initPerformanceVariables();  //this method must be called after all attributes have been set inside the cloned unit as
                                                    //the initilization of performance variables is based on values of some attributes.
 
-            clonedGrp.groups = new LinkedList<Group>();
-            clonedGrp.groups.addAll(groups);
-            clonedGrp.sets = new LinkedList<Set>();
-            clonedGrp.sets.addAll(sets);
+            clonedGrp.children = new LinkedList<ICompilationUnit>();
+            clonedGrp.children.addAll(children);
             clonedGrp.isHeadless = isHeadless;
             return clonedGrp;
         }
@@ -2240,53 +2648,89 @@ public final class CompilationUnits {
                     continue;
                 }
                 Group baseUnit = mctr.getCompilationUnit(baseUnitPath.toString(), Group.class);
+                boolean[] singleElemArrayIndicatingWhetherAnyBaseUnitHasDynamicId = {false};
                 extendedUnit = Group.doExtendFromBase(extendedUnit,
                                             baseUnit.extend(compilationRuntimeContext, mctr),
                                             opType,
                                             extScope,
                                             true,
                                             compilationRuntimeContext,
-                                            mctr);
+                                            mctr,
+                                            singleElemArrayIndicatingWhetherAnyBaseUnitHasDynamicId);
                 canMarkExtensionsAsProcessed = canMarkExtensionsAsProcessed &
                                                         baseUnit.areExtensionsMarkedAsProcessed() &
-                                                            extendedUnit.areExtensionsMarkedAsProcessed();
+                                                            /*extendedUnit.areExtensionsMarkedAsProcessed()*/
+                                                            !singleElemArrayIndicatingWhetherAnyBaseUnitHasDynamicId[0];
             }
             canMarkExtensionsAsProcessed = canMarkExtensionsAsProcessed &
-                                                   extendedUnit.doExtendImmediateChildren(compilationRuntimeContext, mctr) &  //Changed from doExtendImmediateChildren(...) to
-                                                                                                                              //extendedUnit.doExtendImmediateChildren(...)
+                                                   extendedUnit.doExtendImmediateChildren(compilationRuntimeContext,  //Changed from doExtendImmediateChildren(...) to
+                                                                                                                      //extendedUnit.doExtendImmediateChildren(...)
+                                                                                          mctr, this) &
                                                           extendedUnit.doExtendLifecycleBlocks(compilationRuntimeContext, mctr);  //added on 28th May, 20
-            extendedUnit.markExtensionsAsProcessed(canMarkExtensionsAsProcessed);
-            if (!canMarkExtensionsAsProcessed) {
+            extendedUnit.markExtensionsAsProcessed(true);  //This is a cloned version and valid only for a specific compilationRuntimeContext instance.
+                                                           //Let's mark it's extensions proceessed status to always true.
+            /*if (!canMarkExtensionsAsProcessed) {
                 markExtensionsAsProcessed(false);
-            }
+            }*/
+            markExtensionsAsProcessed(canMarkExtensionsAsProcessed);  //Let's mark the actual extensions processed status on
+                                                                      //the orig unit from which the extendedUnit was cloned.
             return extendedUnit;
         }
 
+        private static Group[] getCommonChildren(Group checkInsideGroup, Group checkFromGroup) {
+            Group[] sourceGroups = checkInsideGroup.getChildren(Group.class);
+            Group[] intersectionGroups = checkFromGroup.getChildren(Group.class);
+            List<Group> commonGroups = new LinkedList<>();
+            for (Group grp: sourceGroups) {
+                for (Group intersectionGrp: intersectionGroups) {
+                    if (grp == intersectionGrp) {
+                        commonGroups.add(grp);
+                        break;
+                    }
+                }
+            }
+            return commonGroups.toArray(new Group[0]);
+        }
+
         private boolean doExtendImmediateChildren(CompilationRuntimeContext compilationRuntimeContext,
-                                                  CompiledTemplatesRegistry mctr) throws XPathExpressionException {
+                                                  CompiledTemplatesRegistry mctr,
+                                                  Group origGrp) throws XPathExpressionException {
             boolean allGroupsCacheable = true;
             java.util.Map<Group, Group> extendedGrpMap = new HashMap<Group, Group>();
-            if (groups != null) {
-                for (Group group : groups) {
-                    Group extendedGrp = group.extend(compilationRuntimeContext, mctr);  //25th Jul, 20: An optimization can be done here to call extend only on those child
-                                                                                        //groups that have not already been extended inside Group.doExtendFromBase as a result
-                                                                                        //of implicit inheritance. Just adding this note as a TODO.
-                    //if (extendedGrp.areExtensionsMarkedAsProcessed()) {  //25th Jul, 20: Irrespective of whether the extensions can be marked as processed or not
-                                                                           //we would like to update the extended group's reference inside the cu's groups list or else
-                                                                           //the right structure would not be available for processing. Further, since we are now processing
-                                                                           //the entire extension login on a cloned copy obtained at the beginning of doExtend method we don't
-                                                                           //even risk corrupting the master copy with a transient group which was valid only for this
-                                                                           //extension call and could return a completely different structure if another call to doExtend is made
-                                                                           //(owing to existence of conditional extends or dynamic group names ($ed id))
-                    	extendedGrpMap.put(group, extendedGrp);
-                    //}
-                    allGroupsCacheable = allGroupsCacheable & extendedGrp.areExtensionsMarkedAsProcessed();
+            Group[] thisGroups = getCommonChildren(this, origGrp);  //this.getChildren(Group.class);
+            if (thisGroups != null) {
+                for (Group group : thisGroups) {
+                    if (!group.areExtensionsMarkedAsProcessed()){
+                        Group extendedGrp = group.extend(compilationRuntimeContext, mctr);
+                        //if (extendedGrp.areExtensionsMarkedAsProcessed()) {  //Irrespective of whether the extensions can be marked as
+                                                                               //processed or not we would like to update the extended
+                                                                               //group's reference inside the cu's groups list or else the right
+                                                                               //structure would not be available for processing. Further, since
+                                                                               //we are now processing the entire extension logic on a cloned copy
+                                                                               //obtained at the beginning of doExtend method we don't even risk
+                                                                               //corrupting the master copy with a transient group which was valid
+                                                                               //only for this extension call and could return a completely different
+                                                                               //structure if another call to doExtend is made (owing to existence of
+                                                                               //conditional extends or dynamic group names ($ed id))
+                            extendedGrpMap.put(group, extendedGrp);
+                        //}
+                        //allGroupsCacheable = allGroupsCacheable & extendedGrp.areExtensionsMarkedAsProcessed();
+                        allGroupsCacheable = allGroupsCacheable & group.areExtensionsMarkedAsProcessed();
+                                                                           //In the above statemnt we should check the extensions processed status
+                                                                           //on the orig group and not the extendedGrp because the extendedGrp is
+                                                                           //a clone of base and its 'extensions processed' status is always marked
+                                                                           //as true. It's instance is valid only for a specific compilationRuntimeContext
+                                                                           //and doesn't represent the finality. The orig however however is updated with
+                                                                           //the final extensions processing status and only if there were no
+                                                                           //<conditional extends>, <dynamic group idOrElse in the base units> its extension
+                                                                           //processing status would be set to true.
+                    }
                 }
             }
             for (Entry<Group, Group> entry : extendedGrpMap.entrySet()) {
-                int index = groups.indexOf(entry.getKey());
-                groups.add(index, entry.getValue());
-                groups.remove(index + 1);
+                int index = children.indexOf(entry.getKey());
+                children.add(index, entry.getValue());
+                children.remove(index + 1);
             }
             return allGroupsCacheable;
         }
@@ -2320,16 +2764,28 @@ public final class CompilationUnits {
                 for (ICompilationUnit cunit : cus) {
                     if (cunit instanceof IExtensible) {
                         IExtensible extendedUnit = (IExtensible) ((IExtensible) cunit).extend(compilationRuntimeContext, mctr);
-                        //if (extendedUnit.areExtensionsMarkedAsProcessed()) {  //25th Jul, 20: Irrespective of whether the extensions can be marked as processed or not
-                                                                                //we would like to update the extended group's reference inside the cu's groups list or else
-                                                                                //the right structure would not be available for processing. Further, since we are now processing
-                                                                                //the entire extension login on a cloned copy obtained at the beginning of doExtend method we don't
-                                                                                //even risk corrupting the master copy with a transient group which was valid only for this
-                                                                                //extension call and could return a completely different structure if another call to doExtend is made
-                                                                                //(owing to existence of conditional extends or dynamic group names ($ed id))
+                        //if (extendedUnit.areExtensionsMarkedAsProcessed()) {  //Irrespective of whether the extensions can be marked as
+                                                                                //processed or not we would like to update the extended
+                                                                                //group's reference inside the cu's groups list or else the right
+                                                                                //structure would not be available for processing. Further, since
+                                                                                //we are now processing the entire extension logic on a cloned copy
+                                                                                //obtained at the beginning of doExtend method we don't even risk
+                                                                                //corrupting the master copy with a transient group which was valid
+                                                                                //only for this extension call and could return a completely different
+                                                                                //structure if another call to doExtend is made (owing to existence of
+                                                                                //conditional extends or dynamic group names ($ed id))
                             extendedUnitsMap.put(cunit, extendedUnit);
                         //}
-                        allUnitsCacheable = allUnitsCacheable & extendedUnit.areExtensionsMarkedAsProcessed();
+                        //allUnitsCacheable = allUnitsCacheable & extendedUnit.areExtensionsMarkedAsProcessed();
+                        allUnitsCacheable = allUnitsCacheable & ((IExtensible) cunit).areExtensionsMarkedAsProcessed();
+                                                                           //In the above statemnt we should check the extensions processed status
+                                                                           //on the orig cu and not the extended cu because the extended cu is a
+                                                                           //clone of base and its 'extensions processed' status is always marked
+                                                                           //as true. It's instance is valid only for a specific compilationRuntimeContext
+                                                                           //and doesn't represent the finality. The orig however however is updated with
+                                                                           //the final extensions processing status and only if there were no
+                                                                           //<conditional extends>, <dynamic group idOrElse in the base units> its extension
+                                                                           //processing status would be set to true.
                     }
                 }
             }
@@ -2350,7 +2806,8 @@ public final class CompilationUnits {
                                               Extends.ExtensionScope extScope,
                                               boolean isThroughExplicitInheritance,
                                               CompilationRuntimeContext compilationRuntimeContext,
-                                              CompiledTemplatesRegistry mctr) throws XPathExpressionException {
+                                              CompiledTemplatesRegistry mctr,
+                                              boolean[] singleElemArrayIndicatingWhetherAnyBaseUnitHasDynamicId) throws XPathExpressionException {
             if (!isThroughExplicitInheritance) {
                 //we need to check for id's in order to process inheritance
                 String thisIdentifier = superUnit.getIdOrElse(compilationRuntimeContext);
@@ -2391,48 +2848,78 @@ public final class CompilationUnits {
                     thisClonedGrp.on = baseUnit.on.getClone();
                 }
 
-                //merge the Set CUs
-                for (Set thatSubSet : baseUnit.sets) {
-                    Set thisSubSet = thisClonedGrp.findChildSet(thatSubSet.getIdOrElse(compilationRuntimeContext));
-                    if (thisSubSet == null) {
-                        //the baseUnit contains a Set CU which is not overridden and thus it needs to be added
-                        thisClonedGrp.sets.add(thatSubSet.extend(compilationRuntimeContext, mctr));
-                    }
-                }
-
-                //merge the Group CUs
-                for (Group thatSubGroup : baseUnit.groups) {
-                    //Group thisSubGroup = thisClonedGrp.findChildGroup(Group.getGroupIdOrName(thatSubGroup));
-                    Group thisSubGroup = thisClonedGrp.findChildGroup(thatSubGroup.getIdOrElse(compilationRuntimeContext));
-                    if (thisSubGroup != null) {
-                        //groups require merging
-                        Group extendedGrp = Group.doExtendFromBase(
-                                                       thisSubGroup.extend(compilationRuntimeContext, mctr),
-                                                       thatSubGroup.extend(compilationRuntimeContext, mctr),
-                                                       opType,
-                                                       extScope,
-                                                       false,
-                                                       compilationRuntimeContext,
-                                                       mctr);
-                        int indexOfGrpToBeExtended = thisClonedGrp.groups.indexOf(thisSubGroup);
-                        thisClonedGrp.groups.add(indexOfGrpToBeExtended, extendedGrp);
-                        thisClonedGrp.groups.remove(indexOfGrpToBeExtended + 1);  //the old group would have moved
-                                                                                  //to (index + 1)th location by
-                                                                                  //now
-                    } else {
-                        if (!thatSubGroup.isIdOrElseDynamic()) {
-                            //the baseUnit contains a group which is not overridden and thus it needs to be added
-                            thisClonedGrp.groups.add(thatSubGroup.extend(compilationRuntimeContext, mctr));
-                        }
-                    }
-
-                    if (thatSubGroup.isIdOrElseDynamic()) {
-                        //if the child group inside baseUnit has dynamic id then we can't mark the extensions of
-                        //thisClonedGrp (and thisSubGroup) as processed since any future inheritance processing may
-                        //result in a different group structure.
-                        thisClonedGrp.markExtensionsAsProcessed(false);
+                //merge the child CUs
+                CompilationUnits.ICompilationUnit[] baseUnitCUs = baseUnit.getChildren(CompilationUnits.ICompilationUnit.class);
+                for (ICompilationUnit thatCU: baseUnitCUs) {
+                    if (thatCU instanceof Group) {
+                        Group thatSubGroup = (Group) thatCU;
+                        Group thisSubGroup = thisClonedGrp.findChildGroup(
+                                                    thatSubGroup.getIdOrElse(compilationRuntimeContext));  //note that here we are trying to find a cu which matches the passed
+                                                                                                           //id and is of type Group. If there is some other cu which is NOT of
+                                                                                                           //type Group but has the same id then that would not be returned.
                         if (thisSubGroup != null) {
-                            thisSubGroup.markExtensionsAsProcessed(false);
+                            //groups require merging
+                            Group extendedGrp = Group.doExtendFromBase(
+                                                           thisSubGroup.extend(compilationRuntimeContext, mctr),
+                                                           thatSubGroup.extend(compilationRuntimeContext, mctr),
+                                                           opType,
+                                                           extScope,
+                                                           false,
+                                                           compilationRuntimeContext,
+                                                           mctr,
+                                                           singleElemArrayIndicatingWhetherAnyBaseUnitHasDynamicId);
+                            int indexOfGrpToBeExtended = thisClonedGrp.children.indexOf(thisSubGroup);
+                            thisClonedGrp.children.add(indexOfGrpToBeExtended, extendedGrp);
+                            thisClonedGrp.children.remove(indexOfGrpToBeExtended + 1);  //the old group would have moved
+                                                                                        //to (index + 1)th location by
+                                                                                        //now
+                        } else {
+                            if (!thatSubGroup.isIdOrElseDynamic()) {
+                                //the baseUnit contains a group which is not overridden and thus it needs to be added
+                                /* if (thisClonedGrp.findChild(thatEvaluable.getIdOrElse(compilationRuntimeContext),
+                                                               thisClonedGrp.children.toArray(new ICompilationUnit[0])) == null)
+                                                                                                 //uncomment this statement if we don't want to add
+                                                                                                 //the base group as a child of this group in case
+                                                                                                 //some other cu (which obviously cannot be of type
+                                                                                                 //Group) has the same id as the base group.
+                                */
+                                thisClonedGrp.children.add(thatSubGroup.extend(compilationRuntimeContext, mctr));  //refer the related comment above
+                            }
+                        }
+
+                        if (thatSubGroup.isIdOrElseDynamic()) {
+                            //if the child group inside baseUnit has dynamic id then we can't mark the extensions of
+                            //thisClonedGrp (and thisSubGroup) as processed since any future inheritance processing may
+                            //result in a different group structure.
+                            thisClonedGrp.markExtensionsAsProcessed(false);
+                            if (thisSubGroup != null) {
+                                thisSubGroup.markExtensionsAsProcessed(false);
+                            }
+                            singleElemArrayIndicatingWhetherAnyBaseUnitHasDynamicId[0] = true;  //used to return value to the caller method
+                        }
+                    } else if (thatCU instanceof Set) {
+                        Set thatSubSet = (Set) thatCU;
+                        Set thisSubSet = thisClonedGrp.findChildSet(
+                                                      thatSubSet.getIdOrElse(compilationRuntimeContext));  //note that here we are trying to find a cu which matches the passed
+                                                                                                           //id and is of type Set. If there is some other cu which is NOT of
+                                                                                                           //type Set but has the same id then that would not be returned.
+                        if (thisSubSet == null) {
+                            //the baseUnit contains a Set CU which is not overridden and thus it needs to be added
+                            /* if (thisClonedGrp.findChild(thatEvaluable.getIdOrElse(compilationRuntimeContext),
+                                                           thisClonedGrp.children.toArray(new ICompilationUnit[0])) == null)
+                                                                                             //uncomment this statement if we don't want to add
+                                                                                             //the base set as a child of this group in case
+                                                                                             //some other cu (which obviously cannot be of type
+                                                                                             //Set) has the same id as the base set.
+                            */
+                            thisClonedGrp.children.add(thatSubSet.extend(compilationRuntimeContext, mctr));  //refer the related comment above
+                        }
+                    } else {
+                        ICompilationUnit thisCU = thisClonedGrp.findChild(thatCU.getIdOrElse(compilationRuntimeContext),
+                                                                          thisClonedGrp.children.toArray(new ICompilationUnit[0]));
+                        if (thisCU == null) {
+                            //the baseUnit contains a CU which is not overridden and thus it needs to be added
+                            thisClonedGrp.children.add(thatCU);
                         }
                     }
                 }
@@ -2469,12 +2956,6 @@ public final class CompilationUnits {
         }
         /********************************************************************************************************/
         /********************************************************************************************************/
-
-        public static enum ReturnType {
-            JSON,
-            MAP,
-            OBJECT;
-        }
 
         /************************ Start - initialization and finalization related methods ************************/
         /*********************************************************************************************************/
@@ -2556,47 +3037,31 @@ public final class CompilationUnits {
         }
 
         public Object build(CompilationRuntimeContext compilationRuntimeContext,
-                                    ReturnType returnType) throws XPathExpressionException {
-            if (returnType == ReturnType.JSON) {
-                //return doGetValue(compilationRuntimeContext);
-                return getValue(compilationRuntimeContext);
-            } else if (returnType == ReturnType.MAP || returnType == ReturnType.OBJECT) {
-                /* Commented this block in favour of the satisfies(...) and _noValue(...) methods.
-
-                if (on != null && !on.satisfies(compilationRuntimeContext)) {
-                    return "";  //we need not return any value as there was an 'on' condition defined that remains
-                                //unsatisfied. Also for group it makes sense to return a zero length string and not
-                                //the null value.
-                }
-
-                doInit(compilationRuntimeContext);
-                */
-
-                if (!satisfies(compilationRuntimeContext)) {
-                    return _noValue();
-                }
-                preGetValue(compilationRuntimeContext);
-
-                Object value = null;
-                try {
-                    value = CompilationUnitsSerializationFactory.getGroupSerializer(
-                                CompilationUnitsSerializationFactory.SerializerType.OBJECT).
-                                                   serialize(compilationRuntimeContext, this);
-                    String QUOTATION_MARKS = getQuotationMarks();
-                    if (QUOTATION_MARKS != null) {
-                        QUOTATION_MARKS = QUOTATION_MARKS.trim();
-                    }
-                    return escapeQuotes && QUOTATION_MARKS != null && value instanceof String &&
-                                   ("\"".equals(QUOTATION_MARKS) || "'".equals(QUOTATION_MARKS))?
-                                          ((String) value).replaceAll(QUOTATION_MARKS, "\\\\\\\\" + QUOTATION_MARKS): value;
-                } finally {
-                    //doFinally(compilationRuntimeContext);
-                    postGetValue(value, compilationRuntimeContext);
-                }
-            } else {
-                //return doGetValue(compilationRuntimeContext);  //TODO return non json value. Is this really required?
-                return getValue(compilationRuntimeContext);
+                                    String returnType) throws XPathExpressionException {
+            java.util.Map<String, Object> internalContext = compilationRuntimeContext.getInternalContext();
+            if (internalContext == null) {
+                internalContext = new HashMap<String, Object>();
+                compilationRuntimeContext.setInternalContext(internalContext);
             }
+            boolean internalContextContainedGroupSerializerType = internalContext.containsKey(PARAM_GROUP_SERIALIZER_TYPE);
+            Object savedGroupSerializerType = internalContext.get(PARAM_GROUP_SERIALIZER_TYPE);
+            try {
+                internalContext.put(PARAM_GROUP_SERIALIZER_TYPE, returnType);
+                return doBuild(compilationRuntimeContext);
+            } finally {
+                if (internalContextContainedGroupSerializerType) {
+                    internalContext.put(PARAM_GROUP_SERIALIZER_TYPE, savedGroupSerializerType);
+                } else {
+                    internalContext.remove(PARAM_GROUP_SERIALIZER_TYPE);  //if there was no group-serializer-type key available inside the internal context
+                                                                          //when we entered this method then let's remove the same from the internal context
+                                                                          //map to ensure that it is the exact replica of what we started with.
+                }
+            }
+        }
+
+        protected Object doBuild(CompilationRuntimeContext compilationRuntimeContext)
+                                                                throws XPathExpressionException {
+            return getValue(compilationRuntimeContext);
         }
 
         @Override
@@ -2634,8 +3099,15 @@ public final class CompilationUnits {
             } finally {
                 doFinally(compilationRuntimeContext);
             } */
+
+            String serializerType = "json";  //default serializer type to be used
+            java.util.Map<String, Object> internalContext = compilationRuntimeContext.getInternalContext();
+            if (internalContext != null && internalContext.get(PARAM_GROUP_SERIALIZER_TYPE) instanceof String) {
+                serializerType = (String) internalContext.get(PARAM_GROUP_SERIALIZER_TYPE);
+            }
+
             Object value = CompilationUnitsSerializationFactory.getGroupSerializer(
-                                CompilationUnitsSerializationFactory.SerializerType.JSON).
+                                CompilationUnitsSerializationFactory.SerializerType.fromString(serializerType)/*JSON*/).
                                                            serialize(compilationRuntimeContext, this);
             String QUOTATION_MARKS = getQuotationMarks();
             if (QUOTATION_MARKS != null) {
@@ -2661,9 +3133,14 @@ public final class CompilationUnits {
         public static final String TAG_NAME = "headless-group";
 
         @Override
-        public void doCompileAttributes(Node n) throws XPathExpressionException {
+        public String getTagName() {
+            return HeadlessGroup.TAG_NAME;
+        }
+
+        @Override
+        public void doCompileAttributes(Node n, java.util.Set<String> mergeableAttributes) throws XPathExpressionException {
             isHeadless = true;
-            super.doCompileAttributes(n);
+            super.doCompileAttributes(n, mergeableAttributes);
         }
 
         /********************************** Cloning related methods**********************************/
@@ -2688,21 +3165,17 @@ public final class CompilationUnits {
         public static final String TAG_NAME = "init";
 
         //private static final String CHILDREN_XPATH = "./set";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Set.TAG_NAME, Unset.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Set.TAG_NAME, Unset.TAG_NAME});
 
-        //private List<Set> sets = null;
         private List<IExecutable> executables = null;
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
+        public String getTagName() {
+            return Init.TAG_NAME;
         }
 
         @Override
         protected void doCompileChildren(Node n) throws XPathExpressionException {
-            //sets = new LinkedList<Set>();  //since mostly we would be operating
-                                                   //sequentially so
-                                                   //LinkedList would be an optimal
-                                                   //choice
             executables = new LinkedList<IExecutable>();  //since mostly we would be operating
                                                    //sequentially so
                                                    //LinkedList would be an optimal
@@ -2713,23 +3186,15 @@ public final class CompilationUnits {
 
         @Override
         protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
-            /*if (cu instanceof Set) {
-                sets.add((Set) cu);
-            }*/
             if (cu instanceof IExecutable) {
                 executables.add((IExecutable) cu);
             }
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            //return RECOGNIZED_CHILD_TAGS.contains(tagName);
-            //return CompilationUnits.getCompilationClassForTag(tagName) instanceof IExecutable;  //let's use the class type associated with
-                                                                                                   //tag since any type of executable can get added.
-            //return true;  //TODO remove blanket acceptance
-            return RECOGNIZED_CHILD_TAGS.contains(tagName) ||
-                   //IExecutable.class.isAssignableFrom(CompilationUnits.getCompilationClassForTag(tagName));
-                   CompilationUnits.isAssignableFrom(IExecutable.class, CompilationUnits.getCompilationClassForTag(tagName));
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(IExecutable.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -2737,16 +3202,8 @@ public final class CompilationUnits {
             if (idOrElseOfChild == null) {
                 return null;
             }
-            /*if (sets != null) {
-                for (Set set : sets) {
-                    if (idOrElseOfChild.equals(set.getIdOrElse())) {
-                        return set;
-                    }
-                }
-            }*/
             if (executables != null) {
                 for (IExecutable executable : executables) {
-                    //CompilationUnit ecu = (CompilationUnit) executable;
                     if (idOrElseOfChild.equals(executable.getIdOrElse())) {
                         return executable;
                     }
@@ -2758,19 +3215,11 @@ public final class CompilationUnits {
         @Override
         @SuppressWarnings("unchecked")
         public <T extends ICompilationUnit> T[] getChildren(Class<T> type) {
-            /*Set[] setsArray = areMatchingTypes(Set.class, type) ? getElementsFromList(sets, new Set[0]) : null;
-            return (T[]) (setsArray == null ? getZeroLengthArrayOfType(type) : setsArray);*/
             IExecutable[] executablesArray = areMatchingTypes(IExecutable.class, type) ? getElementsFromList(executables, new IExecutable[0]) : null;
             return (T[]) (executablesArray == null ? getZeroLengthArrayOfType(type) : executablesArray);
         }
 
         public void execute(CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException {
-            /*if (sets == null) {
-                return;
-            }
-            for (Set set : sets) {
-                set.execute(compilationRuntimeContext);
-            }*/
             if (executables == null) {
                 return;
             }
@@ -2781,24 +3230,6 @@ public final class CompilationUnits {
 
         /**************************************************************************************/
         /***********Basically used while cloning a CU during inheritance processing************/
-        /*void copySets(List<Set> sets) {
-            if (this.sets == null) {
-                this.sets = new LinkedList<Set>();
-            }
-            this.sets.addAll(sets);
-        }
-
-        List<Set> getSets() {
-            return sets;
-        }
-
-        Init getClone() {
-            Init clonedInit = new Init();
-            clonedInit.copyAttributes(getAttributes());
-            clonedInit.sets = new LinkedList<Set>();
-            clonedInit.sets.addAll(getSets());
-            return clonedInit;
-        }*/
         void copyExecutables(List<IExecutable> executables) {
             copyExecutables(executables, false);
         }
@@ -2845,6 +3276,11 @@ public final class CompilationUnits {
         public static final String TAG_NAME = "finally";
 
         @Override
+        public String getTagName() {
+            return Finally.TAG_NAME;
+        }
+
+        @Override
         protected Finally newInstance() {
             return new Finally();
         }
@@ -2860,10 +3296,15 @@ public final class CompilationUnits {
 
         //private static final String CHILDREN_XPATH = "./using";
         //private static final String CHILDREN_XPATH2 = "./conditional";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Using.TAG_NAME, Conditional.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Using.TAG_NAME, Conditional.TAG_NAME});
 
         private Using using = null;
         private List<Conditional> conditionals = null;
+
+        @Override
+        public String getTagName() {
+            return Select.TAG_NAME;
+        }
 
         @Override
         protected void doCompileChildren(Node n) throws XPathExpressionException {
@@ -2886,8 +3327,11 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName);
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(Conditional.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(Using.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -3005,16 +3449,30 @@ public final class CompilationUnits {
         private ExtensionOperation extOp = DEFAULT_EXTENSION_OPERATION;
         private ExtensionScope extScope = DEFAULT_EXTENSION_SCOPE;
 
-        @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            super.doCompileAttributes(n);
-            
-            // compile all the attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
+        //instantiates and returns a new instance (in null namespace) with bare minimum attributes.
+        //The cu would be compiled using the passed Node instance.
+        public static Extends newInstance(Node n, String attributeDefaultValue) throws XPathExpressionException {
+            Extends cu = (Extends) CompilationUnits.getCompilationUnitForTag(null, Extends.TAG_NAME);  //initialize an instance with null namespace
+            if (cu != null) {
+                cu.compile(n);
+                cu.setAttribute(ATTRIBUTE_DEFAULT_VALUE, attributeDefaultValue, false);
             }
+            return cu;
+        }
+
+        @Override
+        public String getTagName() {
+            return Extends.TAG_NAME;
+        }
+
+        @Override
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
+        }
+
+        @Override
+        protected void initPerformanceVariables() {
+            super.initPerformanceVariables();
 
             String extOpAsStr = getAttribute(ATTRIBUTE_EXTEND_OP);
             if (extOpAsStr == null || "".equals(extOpAsStr)) {
@@ -3038,7 +3496,8 @@ public final class CompilationUnits {
         }
 
         boolean hasConditionals() {
-            return getChildren(Conditional.class).length != 0;
+            return getChildren(Conditional.class).length != 0 ||
+                   (getEvalExpression() != null && getEvalExpression().isDynamic());
         }
 
         public ExtensionOperation getExtensionOperation() {
@@ -3059,22 +3518,17 @@ public final class CompilationUnits {
         public static final String TAG_NAME = "using";
 
         //private static final String CHILDREN_XPATH = "./valueof | ./get";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{ValueOf.TAG_NAME, Get.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{ValueOf.TAG_NAME, Get.TAG_NAME});
 
-        //private List<ValueOf> valueOfs = null;
         private List<IEvaluable> evaluables = null;
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            //no attributes to compile.
+        public String getTagName() {
+            return Using.TAG_NAME;
         }
 
         @Override
         protected void doCompileChildren(Node n) throws XPathExpressionException {
-            /* valueOfs = new LinkedList<ValueOf>();  //since mostly we would be operating
-                                                   //sequentially so
-                                                   //LinkedList would be an optimal
-                                                   //choice */
             evaluables = new LinkedList<IEvaluable>();  //since mostly we would be operating
                                                      //sequentially so
                                                      //LinkedList would be an optimal
@@ -3085,19 +3539,15 @@ public final class CompilationUnits {
 
         @Override
         protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
-            /* if ((cu instanceof ValueOf) || (cu instanceof Get)) {
-                valueOfs.add((ValueOf) cu);
-            } */
             if (cu instanceof IEvaluable) {
                 evaluables.add((IEvaluable) cu);
             }
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName) ||
-                                       //IEvaluable.class.isAssignableFrom(CompilationUnits.getCompilationClassForTag(tagName));
-                                       CompilationUnits.isAssignableFrom(IEvaluable.class, CompilationUnits.getCompilationClassForTag(tagName));
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(IEvaluable.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -3105,13 +3555,6 @@ public final class CompilationUnits {
             if (idOrElseOfChild == null) {
                 return null;
             }
-            /* if (valueOfs != null) {
-                for (ValueOf valueOf : valueOfs) {
-                    if (idOrElseOfChild.equals(valueOf.getIdOrElse())) {
-                        return valueOf;
-                    }
-                }
-            } */
             if (evaluables != null) {
                 for (IEvaluable evaluable : evaluables) {
                     if (idOrElseOfChild.equals(evaluable.getIdOrElse())) {
@@ -3125,24 +3568,20 @@ public final class CompilationUnits {
         @Override
         @SuppressWarnings("unchecked")
         public <T extends ICompilationUnit> T[] getChildren(Class<T> type) {
-            /* ValueOf[] valueOfsArray = areMatchingTypes(ValueOf.class, type) ?
-                                                    getElementsFromList(valueOfs, new ValueOf[0]) : null;
-            return (T[]) (valueOfsArray == null ? getZeroLengthArrayOfType(type) : valueOfsArray); */
-
             IEvaluable[] evaluablesArray = areMatchingTypes(IEvaluable.class, type) ?
                                                     getElementsFromList(evaluables, new IEvaluable[0]) : null;
             return (T[]) (evaluablesArray == null ? getZeroLengthArrayOfType(type) : evaluablesArray);
         }
 
-        public java.util.Map<String, Object> initAndGetAllVariables(
+        private java.util.Map<String, Object> initAndGetAllVariables(
                                                     CompilationRuntimeContext compilationRuntimeContext)
                                                                                     throws XPathExpressionException {
             java.util.Map<String, Object> mapTmp = new HashMap<String, Object>();
-            for (IEvaluable evaluable: evaluables/*ValueOf vof : valueOfs*/) {
+            for (IEvaluable evaluable: evaluables) {
                 try {
                     compilationRuntimeContext.setAbortIfNotSatisfy(true);  //enable the abort flag
-                    Object value = /*vof*/evaluable.getValue(compilationRuntimeContext);
-                    mapTmp.put(/*vof*/evaluable.getId(), value);
+                    Object value = evaluable.getValue(compilationRuntimeContext);
+                    mapTmp.put(evaluable.getId(), value);
                 } catch (NoConditionsSatisfiedException/*RuntimeException*/ re) {
                     //this was just for indication that the value was not set because the 'on' condition was
                     //not satisfied even when we managed to find a value of the key inside one of the maps.
@@ -3204,18 +3643,6 @@ public final class CompilationUnits {
             if (evaluables == null) {
                 return;
             }
-            /*if (this.valueOfs == null) {
-                this.valueOfs = new LinkedList<ValueOf>();
-            }
-            if (duplicatesOk) {
-                this.valueOfs.addAll(evaluables);  //fast copy using addAll
-            } else {
-                for (ValueOf evaluable: evaluables) {
-                    if (getChild(evaluable.getIdOrElse()) == null) {
-                        this.valueOfs.add(evaluable);
-                    }
-                }
-            }*/
             if (this.evaluables == null) {
                 this.evaluables = new LinkedList<IEvaluable>();
             }
@@ -3230,17 +3657,11 @@ public final class CompilationUnits {
             }
         }
 
-        List<IEvaluable/*ValueOf*/> getEvaluables() {
-            return evaluables;  //valueOfs;
+        List<IEvaluable> getEvaluables() {
+            return evaluables;
         }
 
         Using getClone() {
-            /* Using clonedUsing = new Using();
-            clonedUsing.copyAttributes(getAttributes());
-            clonedUsing.valueOfs = new LinkedList<ValueOf>();
-            clonedUsing.valueOfs.addAll(getEvaluables());
-            return clonedUsing; */
-
             Using clonedUsing = new Using();
             clonedUsing.copyAttributes(getAttributes());
             clonedUsing.evaluables = new LinkedList<IEvaluable>();
@@ -3253,22 +3674,19 @@ public final class CompilationUnits {
     public static class Set extends ExtensibleCompilationUnit<Set> implements IExecutable {
         public static final String TAG_NAME = "set";
 
-        private static final String TRUE = "true";
-
         private static final String ATTRIBUTE_ATTRIBUTE = "attribute";
         private static final String ATTRIBUTE_IN = "in";
-        private static final String ATTRIBUTE_AS = "as";
         private static final String ATTRIBUTE_BREAK_ON_FIRST_VALUE_SET = "breakOnFirstValueSet";
         private static final String ATTRIBUTE_OVERRIDE_VALUE = "override";  //true or false
-        private static final String ATTRIBUTE_OUTPUT_NULL_VALUE = "outputNullValue";  //true or false
         private static final String ATTRIBUTE_CREATE_MAP_IF_MISSING = "createMapIfMissing";  //true or false
-        private static final String[] ATTRIBUTES = {ATTRIBUTE_ATTRIBUTE, ATTRIBUTE_IN, ATTRIBUTE_AS,
+        private static final String[] ATTRIBUTES = {ATTRIBUTE_ATTRIBUTE, ATTRIBUTE_IN,
                                                     ATTRIBUTE_BREAK_ON_FIRST_VALUE_SET,
-                                                    ATTRIBUTE_OVERRIDE_VALUE, ATTRIBUTE_OUTPUT_NULL_VALUE,
+                                                    ATTRIBUTE_OVERRIDE_VALUE,
                                                     ATTRIBUTE_CREATE_MAP_IF_MISSING};
         //private static final String CHILDREN_XPATH = "./valueof | ./get | ./select";
         //private static final String CHILDREN_XPATH2 = "./on";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{ValueOf.TAG_NAME, Get.TAG_NAME, Select.TAG_NAME, On.TAG_NAME});
+        /* private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(
+                                                                       new String[]{ValueOf.TAG_NAME, Get.TAG_NAME, Select.TAG_NAME, On.TAG_NAME}); */
 
         private List<IEvaluable/*EvaluableCompilationUnit*/> evaluables = null;
         private On on = null;  //'on' condition, if present, must be satisfied in order for this Set CU to execute.
@@ -3279,12 +3697,14 @@ public final class CompilationUnits {
         private boolean overrideValue = true;  //using a separate boolean field (and not using the
                                                //string value of the corresponding attribute available inside
                                                //the attributes map for optimization/performance enhancement.
-        private boolean outputNullValue = false;  //using a separate boolean field (and not using the
-                                                  //string value of the corresponding attribute available inside
-                                                  //the attributes map for optimization/performance enhancement.
         private boolean createMapIfMissing = false;  //using a separate boolean field (and not using the
                                                      //string value of the corresponding attribute available inside
                                                      //the attributes map for optimization/performance enhancement.
+
+        @Override
+        public String getTagName() {
+            return Set.TAG_NAME;
+        }
 
         public String getAttributeToSet(CompilationRuntimeContext compilationRuntimeContext) {
             //return getAttribute(ATTRIBUTE_ATTRIBUTE);
@@ -3296,10 +3716,6 @@ public final class CompilationUnits {
                 attribute = getAttribute(ATTRIBUTE_ATTRIBUTE);  //return the uncomputed value as fallback.
             }
             return attribute;
-        }
-
-        public boolean doOutputNullValue() {
-            return outputNullValue;
         }
 
         @Override
@@ -3314,17 +3730,8 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            super.doCompileAttributes(n);
-
-            // compile all the attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
-            }
-
-            initPerformanceVariables();  //initialize some attribute variables for performance optimization
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
         }
 
         /**************** Pre-initialize some attribute variables for performance enhancement ****************/
@@ -3347,12 +3754,6 @@ public final class CompilationUnits {
                 overrideValueTmp = "true";
             }
             overrideValue = TRUE.equalsIgnoreCase(overrideValueTmp);
-
-            String outputNullValueTmp = getAttribute(ATTRIBUTE_OUTPUT_NULL_VALUE);
-            if (outputNullValueTmp == null || "".equals(outputNullValueTmp)) {
-                outputNullValueTmp = "false";
-            }
-            outputNullValue = TRUE.equalsIgnoreCase(outputNullValueTmp);
 
             String createMapIfMissingTmp = getAttribute(ATTRIBUTE_CREATE_MAP_IF_MISSING);
             if (createMapIfMissingTmp == null || "".equals(createMapIfMissingTmp)) {
@@ -3390,11 +3791,12 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return super.isChildTagRecognized(tagName) || RECOGNIZED_CHILD_TAGS.contains(tagName) ||
-                                   //EvaluableCompilationUnit.class.isAssignableFrom(CompilationUnits.getCompilationClassForTag(tagName));
-                                   //IEvaluable.class.isAssignableFrom(CompilationUnits.getCompilationClassForTag(tagName));
-                                   CompilationUnits.isAssignableFrom(IEvaluable.class, CompilationUnits.getCompilationClassForTag(tagName));
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return super.isChildTagRecognized(tagNamespaceURI, tagName) ||
+                   CompilationUnits.isAssignableFrom(IEvaluable.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(On.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -3441,6 +3843,11 @@ public final class CompilationUnits {
         protected Set doExtend(CompilationRuntimeContext compilationRuntimeContext,
                                                         CompiledTemplatesRegistry mctr) {
             //TODO do we really need inheritance at set level???
+            markExtensionsAsProcessed(true);  //since we are not doing anything to process inheritance for set, let's mark extensions
+                                              //as processed to ensure the overall marking of extension processing status of the
+                                              //containing group cus are also done correctly (set cus can exist inside init, finally blocks
+                                              //and the extensions_processed flag of all extensible units is taken into consideration
+                                              //before marking the same at group level).
             return this;
         }
 
@@ -3476,7 +3883,7 @@ public final class CompilationUnits {
                 //    throw new RuntimeException("Attribute '" +
                 //                                attribute + "' in map '" + in + "' cannot be overridden.");
                 //}
-                //if (value != null || outputNullValue) {
+                //if (value != null || doOutputNullValue()) {
                 //    mapTmp.put(attribute, value/* == null ? null : value.toString()*/);  //Using the raw value instead of toString
                 //}
                 setValueInMap(false, in, mapTmp, attribute, value);
@@ -3486,7 +3893,7 @@ public final class CompilationUnits {
                 //to true then we would dynamically create the required map and also set it inside MapOfMaps.
                 if (createMapIfMissing && in != null && !"".equals(in.trim())) {
                     java.util.Map<String, Object> map = new HashMap<String, Object>();
-                    //if (value != null || outputNullValue) {
+                    //if (value != null || doOutputNullValue()) {
                     //    map.put(attribute, value/* == null ? null : value.toString()*/);  //Using the raw value instead of toString
                     //}
                     setValueInMap(true, in, map, attribute, value);
@@ -3505,7 +3912,7 @@ public final class CompilationUnits {
                 throw new RuntimeException("Attribute '" +
                                             attribute + "' in map '" + nameOfMap + "' cannot be overridden.");
             }
-            if (value != null || outputNullValue) {
+            if (value != null || doOutputNullValue()) {
                 if (attribute != null) {
                     map.put(attribute, value/* == null ? null : value.toString()*/);  //Using the raw value instead of toString
                 } else if (value instanceof java.util.Map) {
@@ -3566,10 +3973,16 @@ public final class CompilationUnits {
         private static final String ATTRIBUTE_ATTRIBUTE = "attribute";
         private static final String[] ATTRIBUTES = {ATTRIBUTE_ATTRIBUTE};
 
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Map.TAG_NAME, InternalMap.TAG_NAME, Json.TAG_NAME, On.TAG_NAME});
+        /* private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(
+                                                                       new String[]{Map.TAG_NAME, InternalMap.TAG_NAME, Json.TAG_NAME, On.TAG_NAME}); */
 
         private List<Map> maps = null;
         private On on = null;
+
+        @Override
+        public String getTagName() {
+            return Unset.TAG_NAME;
+        }
 
         private String getAttributeToUnset(CompilationRuntimeContext compilationRuntimeContext) {
             String attribute = null;
@@ -3594,13 +4007,8 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
-            // compile all the attributes
-            for (String attribute : ATTRIBUTES) {
-                setAttribute(
-                        attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
-            }
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
         }
 
         @Override
@@ -3624,8 +4032,11 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName);
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(Map.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(On.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -3679,15 +4090,25 @@ public final class CompilationUnits {
 
     public static class Get extends ValueOf {
         public static final String TAG_NAME = "get";
+
+        @Override
+        public String getTagName() {
+            return Get.TAG_NAME;
+        }
     }
 
     public static class ExecutableGroup extends Group implements IExecutable {
         public static final String TAG_NAME = "executable-group";
 
         //private static final String CHILDREN_XPATH = "./using";
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Using.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Using.TAG_NAME});
 
         private Using using = null;
+
+        @Override
+        public String getTagName() {
+            return ExecutableGroup.TAG_NAME;
+        }
 
         @Override
         protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
@@ -3700,8 +4121,10 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return super.isChildTagRecognized(tagName) || RECOGNIZED_CHILD_TAGS.contains(tagName);
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return super.isChildTagRecognized(tagNamespaceURI, tagName) ||
+                   CompilationUnits.isAssignableFrom(Using.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -3788,10 +4211,19 @@ public final class CompilationUnits {
         /************** End - pre and post processing methods of getValue(...) **************/
         /************************************************************************************/
 
+        /*
         //overridden to call execute by default as that makes logical sense for this executable group.
         @Override
         public Object build(CompilationRuntimeContext compilationRuntimeContext,
-                                              ReturnType returnType) throws XPathExpressionException {
+                                              String returnType) throws XPathExpressionException {
+            return execute(compilationRuntimeContext);
+        }
+        */
+
+        //overridden to call execute by default as that makes logical sense for this executable group.
+        @Override
+        protected Object doBuild(CompilationRuntimeContext compilationRuntimeContext)
+                                                                 throws XPathExpressionException {
             return execute(compilationRuntimeContext);
         }
 
@@ -3832,9 +4264,9 @@ public final class CompilationUnits {
             */
 
             String resultMapName = null;
-            String EXECUTION_ENDSTATE = "_$execution-endstate";
-            String EXECUTION_OUTCOME = "_$execution-outcome";
-            String EXECUTION_RESULT_MAP = "_$execution-result-map";
+            String EXECUTION_ENDSTATE = "_execution-endstate";
+            String EXECUTION_OUTCOME = "_execution-outcome";
+            String EXECUTION_RESULT_MAP = "_execution-resultmap";
             java.util.Map<String, Object> internalCtx = compilationRuntimeContext.getInternalContext();
             if (internalCtx == null) {
                 //internalCtx is null but we would need to set couple of state variables inside the internal context.
@@ -3914,9 +4346,14 @@ public final class CompilationUnits {
         public static final String TAG_NAME = "headless-executable-group";
 
         @Override
-        public void doCompileAttributes(Node n) throws XPathExpressionException {
+        public String getTagName() {
+            return HeadlessExecutableGroup.TAG_NAME;
+        }
+
+        @Override
+        public void doCompileAttributes(Node n, java.util.Set<String> mergeableAttributes) throws XPathExpressionException {
             isHeadless = true;
-            super.doCompileAttributes(n);
+            super.doCompileAttributes(n, mergeableAttributes);
         }
 
         /************************************ Used during cloning ***********************************/
@@ -3940,9 +4377,46 @@ public final class CompilationUnits {
     public static class Loop extends HeadlessExecutableGroup implements IExecutable {
         public static final String TAG_NAME = "loop";
 
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Break.TAG_NAME});
+        private static String LOOP_STATE_VARIABLE_START_INDEX = "start-index";
+        private static String LOOP_STATE_VARIABLE_END_INDEX = "end-index";
+        private static String LOOP_STATE_VARIABLE_INDEX = "index";
+        private static String LOOP_STATE_VARIABLE_NUM_TIMES = "num-times";
+        private static String LOOP_STATE_VARIABLE_ITEM_KEY = "item-key";
+        private static String LOOP_STATE_VARIABLE_ITEM_VALUE = "item-value";  //value of item for use in the current iteration
+        private static String LOOP_STATE_VARIABLE_LAST_ITR_VALUE = "itr-value";  //holds the value of the last completed iteration
+        private static String LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR = "loop-value";  //holds the consolidated value of the loop calculated so far
+
+        private static final String ATTRIBUTE_JIDSVN = "jidsvn"; //joinIdWithStateVariableNames.
+                                                                 //Any value, if set, other than true would indicate false.
+        private static final String[] ATTRIBUTES = {ATTRIBUTE_JIDSVN};
+
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Break.TAG_NAME});
 
         private Break breakk;
+
+        private boolean joinIdWithStateVariableNames = true;  //by default let's join id with state variable names to avoid name conflicts
+                                                              //(with state variables of nested loops Or of internalContext in general)
+
+        @Override
+        public String getTagName() {
+            return Loop.TAG_NAME;
+        }
+
+        @Override
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
+        }
+
+        @Override
+        protected void initPerformanceVariables() {
+            super.initPerformanceVariables();
+
+            String joinIdWithStateVariableNamesTmp = getAttribute(ATTRIBUTE_JIDSVN);
+            if (joinIdWithStateVariableNamesTmp == null || "".equals(joinIdWithStateVariableNamesTmp)) {
+                joinIdWithStateVariableNamesTmp = "true";
+            }
+            joinIdWithStateVariableNames = TRUE.equalsIgnoreCase(joinIdWithStateVariableNamesTmp);
+        }
 
         @Override
         protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
@@ -3955,8 +4429,10 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return super.isChildTagRecognized(tagName) || RECOGNIZED_CHILD_TAGS.contains(tagName);
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return super.isChildTagRecognized(tagNamespaceURI, tagName) ||
+                   CompilationUnits.isAssignableFrom(Break.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -4131,10 +4607,14 @@ public final class CompilationUnits {
             }
         }
 
-        private static String getStateVariable(String key, java.util.Map<String, Object> lookupMap) {
+        private String getStateVariable(String key, java.util.Map<String, Object> lookupMap) {
             Object variable = lookupMap.get(key);
-            return variable instanceof String? (String) variable: key;  //if a custom state variable is defined and if it is of type String then return
-                                                                        //it's value. Else return key as is to be used as the state variable.
+            String var = variable instanceof String? (String) variable: key;  //if a custom state variable is defined and if it is of type String then use
+                                                                              //it's value. Else use key as is as the state variable.
+            if (joinIdWithStateVariableNames && getIdOrElse() != null) {
+                var = getIdOrElse() + "_" + var;  //using underscore as joiner
+            }
+            return var;
         }
 
         private Object loopTimes(java.util.Map<String, Object> internalCtx,
@@ -4145,10 +4625,13 @@ public final class CompilationUnits {
             Object endIndexAsObject = requestContext.get("end");
             Object numTimesAsObject = requestContext.get("times");
 
-            final String START_INDEX = getStateVariable("start-index", internalCtx);
-            final String END_INDEX = getStateVariable("end-index", internalCtx);
-            final String LOOP_INDEX = getStateVariable("index", internalCtx);
-            final String NUM_TIMES = getStateVariable("num-times", internalCtx);
+            final String START_INDEX = getStateVariable(LOOP_STATE_VARIABLE_START_INDEX, internalCtx);
+            final String END_INDEX = getStateVariable(LOOP_STATE_VARIABLE_END_INDEX, internalCtx);
+            final String LOOP_INDEX = getStateVariable(LOOP_STATE_VARIABLE_INDEX, internalCtx);
+            final String NUM_TIMES = getStateVariable(LOOP_STATE_VARIABLE_NUM_TIMES, internalCtx);
+            final String LAST_ITR_VALUE = getStateVariable(LOOP_STATE_VARIABLE_LAST_ITR_VALUE, internalCtx);  //holds the value of the last completed iteration
+            final String LOOP_VALUE_SO_FAR = getStateVariable(LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR,
+                                                              internalCtx);  //holds the consolidated value of the loop calculated so far
 
             int startIndex = 0;
             int endIndex = 0;
@@ -4194,13 +4677,16 @@ public final class CompilationUnits {
                     _delay(iterationDelayMillisecs, i != startIndex);  //inject applicable delay between the iterations
 
                     //evaluate the evaluables
-                    value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value);
+                    value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value, internalCtx, LAST_ITR_VALUE);
+                    internalCtx.put(LOOP_VALUE_SO_FAR, value);
                 }
             } finally {
                 internalCtx.remove(START_INDEX);
                 internalCtx.remove(END_INDEX);
                 internalCtx.remove(LOOP_INDEX);
                 internalCtx.remove(NUM_TIMES);
+                internalCtx.remove(LAST_ITR_VALUE);
+                internalCtx.remove(LOOP_VALUE_SO_FAR);
             }
             return value;
         }
@@ -4213,8 +4699,11 @@ public final class CompilationUnits {
                 return value;
             }
             boolean[] singleElemArrayIndicatingWhetherFirstTime = {true};
-            final String ITEM_VALUE = getStateVariable("item-value", internalCtx);
-            final String ITEM_INDEX = getStateVariable("index", internalCtx);
+            final String ITEM_VALUE = getStateVariable(LOOP_STATE_VARIABLE_ITEM_VALUE, internalCtx);
+            final String ITEM_INDEX = getStateVariable(LOOP_STATE_VARIABLE_INDEX, internalCtx);
+            final String LAST_ITR_VALUE = getStateVariable(LOOP_STATE_VARIABLE_LAST_ITR_VALUE, internalCtx);  //holds the value of the last completed iteration
+            final String LOOP_VALUE_SO_FAR = getStateVariable(LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR,
+                                                              internalCtx);  //holds the consolidated value of the loop calculated so far
             int arrayLength = Array.getLength(array);  //using reflection here to keep the logic of iterating array elements generic.
             long iterationDelayMillisecs = _iterationDelay(internalCtx);
             try {
@@ -4229,11 +4718,14 @@ public final class CompilationUnits {
                     _delay(iterationDelayMillisecs, i != 0);  //inject applicable delay between the iterations
 
                     //evaluate the evaluables
-                    value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value);
+                    value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value, internalCtx, LAST_ITR_VALUE);
+                    internalCtx.put(LOOP_VALUE_SO_FAR, value);
                 }
             } finally {
                 internalCtx.remove(ITEM_VALUE);
                 internalCtx.remove(ITEM_INDEX);
+                internalCtx.remove(LAST_ITR_VALUE);
+                internalCtx.remove(LOOP_VALUE_SO_FAR);
             }
             return value;
         }
@@ -4246,8 +4738,11 @@ public final class CompilationUnits {
                 return value;
             }
             boolean[] singleElemArrayIndicatingWhetherFirstTime = {true};
-            final String ITEM_VALUE = getStateVariable("item-value", internalCtx);
-            final String ITEM_INDEX = getStateVariable("index", internalCtx);
+            final String ITEM_VALUE = getStateVariable(LOOP_STATE_VARIABLE_ITEM_VALUE, internalCtx);
+            final String ITEM_INDEX = getStateVariable(LOOP_STATE_VARIABLE_INDEX, internalCtx);
+            final String LAST_ITR_VALUE = getStateVariable(LOOP_STATE_VARIABLE_LAST_ITR_VALUE, internalCtx);  //holds the value of the last completed iteration
+            final String LOOP_VALUE_SO_FAR = getStateVariable(LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR,
+                                                              internalCtx);  //holds the consolidated value of the loop calculated so far
             long iterationDelayMillisecs = _iterationDelay(internalCtx);
             int index = 0;
             try {
@@ -4262,11 +4757,14 @@ public final class CompilationUnits {
                     _delay(iterationDelayMillisecs, index != 1);  //inject applicable delay between the iterations
 
                     //evaluate the evaluables
-                    value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value);
+                    value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value, internalCtx, LAST_ITR_VALUE);
+                    internalCtx.put(LOOP_VALUE_SO_FAR, value);
                 }
             } finally {
                 internalCtx.remove(ITEM_VALUE);
                 internalCtx.remove(ITEM_INDEX);
+                internalCtx.remove(LAST_ITR_VALUE);
+                internalCtx.remove(LOOP_VALUE_SO_FAR);
             }
             return value;
         }
@@ -4279,9 +4777,12 @@ public final class CompilationUnits {
                 return value;
             }
             boolean[] singleElemArrayIndicatingWhetherFirstTime = {true};
-            final String ITEM_KEY = getStateVariable("item-key", internalCtx);
-            final String ITEM_VALUE = getStateVariable("item-value", internalCtx);
-            final String ITEM_INDEX = getStateVariable("index", internalCtx);
+            final String ITEM_KEY = getStateVariable(LOOP_STATE_VARIABLE_ITEM_KEY, internalCtx);
+            final String ITEM_VALUE = getStateVariable(LOOP_STATE_VARIABLE_ITEM_VALUE, internalCtx);
+            final String ITEM_INDEX = getStateVariable(LOOP_STATE_VARIABLE_INDEX, internalCtx);
+            final String LAST_ITR_VALUE = getStateVariable(LOOP_STATE_VARIABLE_LAST_ITR_VALUE, internalCtx);  //holds the value of the last completed iteration
+            final String LOOP_VALUE_SO_FAR = getStateVariable(LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR,
+                                                              internalCtx);  //holds the consolidated value of the loop calculated so far
             long iterationDelayMillisecs = _iterationDelay(internalCtx);
             int index = 0;
             try {
@@ -4298,36 +4799,61 @@ public final class CompilationUnits {
                     _delay(iterationDelayMillisecs, index != 1);  //inject applicable delay between the iterations
 
                     //evaluate the evaluables
-                    value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value);
+                    value = loopBody(compilationRuntimeContext, singleElemArrayIndicatingWhetherFirstTime, value, internalCtx, LAST_ITR_VALUE);
+                    internalCtx.put(LOOP_VALUE_SO_FAR, value);
                 }
             } finally {
                 internalCtx.remove(ITEM_KEY);
                 internalCtx.remove(ITEM_VALUE);
                 internalCtx.remove(ITEM_INDEX);
+                internalCtx.remove(LAST_ITR_VALUE);
+                internalCtx.remove(LOOP_VALUE_SO_FAR);
             }
             return value;
         }
 
         private Object loopBody(CompilationRuntimeContext compilationRuntimeContext,
                                 boolean[] singleElemArrayIndicatingWhetherFirstTime,
-                                Object value) throws XPathExpressionException {
+                                Object value,
+                                java.util.Map<String, Object> internalCtx,
+                                String itrValueHolderKey) throws XPathExpressionException {
             Object _value = iteration(compilationRuntimeContext);
-            //Object _value = iterationValueObj;
-            if (_value != null && !"".equals(_value)) {
-                if (!singleElemArrayIndicatingWhetherFirstTime[0]) {
-                    value += ",";
-                } else {
-                    singleElemArrayIndicatingWhetherFirstTime[0] = false;
+            internalCtx.put(itrValueHolderKey, _value);
+            if (isIterationCombinatorDisabled(internalCtx)) {
+                value = _value;
+            } else {
+                //Object _value = iterationValueObj;
+                if (_value != null && !"".equals(_value)) {
+                    if (!singleElemArrayIndicatingWhetherFirstTime[0]) {
+                        value += joiner(compilationRuntimeContext.getInternalContext());
+                    } else {
+                        singleElemArrayIndicatingWhetherFirstTime[0] = false;
+                    }
                 }
-            }
-            if (_value != null && !"".equals(_value)) {
-                if (value == null) {
-                    value = _value.toString();
-                } else {
-                    value += _value.toString();
+                if (_value != null && !"".equals(_value)) {
+                    if (value == null) {
+                        value = _value.toString();
+                    } else {
+                        value += _value.toString();
+                    }
                 }
             }
             return value;
+        }
+
+        //providing this mechanism to disable combining of iteration results. This approach would be
+        //eventually be replaced with option to define a custom combinator when the 'Ref' cu gets introduced.
+        private boolean isIterationCombinatorDisabled(java.util.Map<String, Object> internalCtx) {
+            String ITR_COMBINATOR = "itr-combinator";
+            boolean combinatorKeyExists = internalCtx.containsKey(ITR_COMBINATOR);
+            Object combinator = internalCtx.get(ITR_COMBINATOR);
+            return (combinatorKeyExists && (combinator == null || "disabled".equalsIgnoreCase(combinator.toString())));
+        }
+
+        //returns joiner to be used for iteration results
+        private String joiner(java.util.Map<String, Object> internalCtx) {
+            Object joiner = internalCtx.get("itr-joiner");
+            return joiner != null? joiner.toString(): ",";  //in case of missing joiner, comma will be used as the default joiner.
         }
 
         //represents an iteration of the loop. Subclasses can override.
@@ -4381,12 +4907,13 @@ public final class CompilationUnits {
             public static final String TAG_NAME = "break";
 
             //private static final String CHILDREN_XPATH = "./conditional | ./condition";
-            private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Conditional.TAG_NAME, Condition.TAG_NAME});
+            //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Conditional.TAG_NAME, Condition.TAG_NAME});
 
             private ICondition condition = null;
 
             @Override
-            protected void doCompileAttributes(Node n) throws XPathExpressionException {
+            public String getTagName() {
+                return Break.TAG_NAME;
             }
 
             @Override
@@ -4398,8 +4925,9 @@ public final class CompilationUnits {
             }
 
             @Override
-            protected boolean isChildTagRecognized(String tagName) {
-                return RECOGNIZED_CHILD_TAGS.contains(tagName);
+            protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+                return CompilationUnits.isAssignableFrom(ICondition.class,
+                                                         CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
             }
 
             @Override
@@ -4454,7 +4982,7 @@ public final class CompilationUnits {
         private static final String ATTRIBUTE_TARGET = "target";  //recognized values would be 'file', 'console' and 'socket' (exclusive of quotes)
         private static final String[] ATTRIBUTES = {ATTRIBUTE_LEVEL, ATTRIBUTE_TARGET};
 
-        private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Using.TAG_NAME, On.TAG_NAME});
+        //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Using.TAG_NAME, On.TAG_NAME});
 
         private On on = null;
         private Using using = null;
@@ -4464,13 +4992,27 @@ public final class CompilationUnits {
                                                //as to which xml file the log statement was defined.
 
         @Override
-        protected void doCompileAttributes(Node n) throws XPathExpressionException {
+        public String getTagName() {
+            return Log.TAG_NAME;
+        }
+
+        @Override
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
+        }
+
+        @Override
+        protected void doCompileAttributes(Node n, java.util.Set<String> mergeableAttributes) throws XPathExpressionException {
+            super.doCompileAttributes(n, mergeableAttributes);
+            /*
             // compile all the attributes
             for (String attribute : ATTRIBUTES) {
                 setAttribute(
                         attribute,
-                        getAttributeValueIffAttributeIsDefined("@" + attribute, n));
+                        getAttributeValueIffAttributeIsDefined("@" + attribute, n),
+                        mergeableAttributes.contains(attribute));
             }
+            */
 
             //set the logging context - we will use document element identifier for the purpose
             String _loggingContext = null;
@@ -4510,10 +5052,13 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean isChildTagRecognized(String tagName) {
-            return RECOGNIZED_CHILD_TAGS.contains(tagName) ||
-                   //IEvaluable.class.isAssignableFrom(CompilationUnits.getCompilationClassForTag(tagName));
-                   CompilationUnits.isAssignableFrom(IEvaluable.class, CompilationUnits.getCompilationClassForTag(tagName));
+        protected boolean isChildTagRecognized(String tagNamespaceURI, String tagName) {
+            return CompilationUnits.isAssignableFrom(IEvaluable.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(Using.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName)) ||
+                   CompilationUnits.isAssignableFrom(On.class,
+                                                     CompilationUnits.getCompilationClassForTag(tagNamespaceURI, tagName));
         }
 
         @Override
@@ -4632,6 +5177,11 @@ public final class CompilationUnits {
     //Assertion cu
     public static class Assert extends Conditional implements IExecutable {
         public static final String TAG_NAME = "assert";
+
+        @Override
+        public String getTagName() {
+            return Assert.TAG_NAME;
+        }
 
         @Override
         public Object execute(CompilationRuntimeContext compilationRuntimeContext)

@@ -32,15 +32,21 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
+import org.cuframework.config.ConfigManager;
+
+import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import org.xml.sax.InputSource;
+//import org.xml.sax.InputSource;
 
 /**
  * Framework XPath Engine.
@@ -53,28 +59,43 @@ public final class TemplateXPathEngine {
     }
 
     public static Node getNode(String xpathExpr, String source)
-            throws FileNotFoundException, XPathExpressionException {
+            throws FileNotFoundException, TemplateCompilationException, XPathExpressionException {
         return getNode(xpathExpr, new FileInputStream(source));
     }
 
     public static NodeList getNodes(String xpathExpr, String source)
-            throws FileNotFoundException, XPathExpressionException {
+            throws FileNotFoundException, TemplateCompilationException, XPathExpressionException {
         return getNodes(xpathExpr, new FileInputStream(source));
     }
 
     public static Node getNode(String xpathExpr, InputStream in)
-            throws FileNotFoundException, XPathExpressionException {
+            throws TemplateCompilationException, XPathExpressionException {
         XPath xpath = XPathFactory.newInstance().newXPath();
-        InputSource inputSource = new InputSource(in);
+        /*InputSource inputSource = new InputSource(in);
         return (Node) xpath.evaluate(xpathExpr, inputSource,
+                XPathConstants.NODE);*/
+        return (Node) xpath.evaluate(xpathExpr, toInputSource(in),
                 XPathConstants.NODE);
     }
 
     public static NodeList getNodes(String xpathExpr, InputStream in)
-            throws FileNotFoundException, XPathExpressionException {
+            throws TemplateCompilationException, XPathExpressionException {
         XPath xpath = XPathFactory.newInstance().newXPath();
-        InputSource inputSource = new InputSource(in);
+        /*InputSource inputSource = new InputSource(in);
         return (NodeList) xpath.evaluate(xpathExpr, inputSource,
+                XPathConstants.NODESET);*/
+        return (NodeList) xpath.evaluate(xpathExpr, toInputSource(in),
                 XPathConstants.NODESET);
+    }
+
+    private static Document toInputSource(InputStream in) throws TemplateCompilationException {
+        try{
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            dbf.setCoalescing(true);
+            dbf.setNamespaceAware(ConfigManager.getInstance().isSystemNamespaceAware());
+            return dbf.newDocumentBuilder().parse(in);
+        } catch(Exception e) {
+            throw new TemplateCompilationException(e);
+        }
     }
 }

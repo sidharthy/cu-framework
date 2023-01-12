@@ -42,6 +42,11 @@ import org.cuframework.core.CompilationUnits.ExecutableGroup;
 public class LoadProperties extends ExecutableGroup implements IExecutable {
     public static final String TAG_NAME = "load-properties";
 
+    @Override
+    public String getTagName() {
+        return LoadProperties.TAG_NAME;
+    }
+
     //the result or outcome of the execution should be set inside requestContext as a map and the name of the map key should be returned as the value of the function.
     @Override
     protected String doExecute(java.util.Map<String, Object> requestContext) {

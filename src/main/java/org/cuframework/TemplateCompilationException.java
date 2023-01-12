@@ -1,5 +1,5 @@
 // Compilation Units Framework: a very generic & powerful data driven programming framework.
-// Copyright (c) 2019 Sidharth Yadav, sidharth_08@yahoo.com
+// Copyright (c) 2023 Sidharth Yadav, sidharth_08@yahoo.com
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -26,31 +26,24 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 // THE POSSIBILITY OF SUCH DAMAGE.
 
-package org.cuframework.core;
+package org.cuframework;
 
 /**
- * Exception to indicate that none of the provided conditions were satisfied (e.g. of Select CU and Map CU of ValueOf).
- * This exception is raised only if the abortIfNotSatisfied flag is set to true inside internal context.
- *
+ * Exception to indicate that something went wrong while compiling the cu's xml template.
  * @author Sidharth Yadav
+ *
  */
-class NoConditionsSatisfiedException extends RuntimeException {
-    private String parentCuId = null;
+public class TemplateCompilationException extends Exception {
 
-    public NoConditionsSatisfiedException(String message) {
+    public TemplateCompilationException(String message) {
         super(message);
     }
 
-    public NoConditionsSatisfiedException(String parentCuId, String message) {
-        super(message);
-        this.parentCuId = parentCuId;
+    public TemplateCompilationException(Throwable cause) {
+        super(cause);
     }
 
-    public String getParentCuId() {
-        return parentCuId;
-    }
-
-    public String toString() {
-        return (parentCuId == null? "": parentCuId + ": " + getMessage());
+    public TemplateCompilationException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

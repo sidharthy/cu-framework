@@ -42,9 +42,25 @@ import javax.xml.xpath.XPathExpressionException;
  *
  */
 public class CompiledTemplate {
+    private String templateId = null;
     private List<CompilationUnits.ICompilationUnit> compilationUnits =
                                               new ArrayList<CompilationUnits.ICompilationUnit>();
     private boolean extensionsProcessedBefore = false;  //for optimization
+
+    public CompiledTemplate(String templateId) {
+        if (templateId == null || "".equals(templateId.trim())) {
+            throw new IllegalArgumentException("Template id cannot be empty or null");
+        }
+        this.templateId = templateId;
+    }
+
+    public String getId() {
+        return templateId;
+    }
+
+    public boolean extensionsProcessed() {
+        return extensionsProcessedBefore;
+    }
 
     CompiledTemplate doExtends(CompilationRuntimeContext compilationRuntimeContext,
                    CompiledTemplatesRegistry mctr) throws XPathExpressionException {
@@ -62,7 +78,14 @@ public class CompiledTemplate {
                     extensibleUnits.put(cu, extendedCU);
                     if (extendedCU instanceof CompilationUnits.IExtensible) {
                         areAllExtensibleUnitsMarkedAsProcessed &=
-                              CompilationUnits.IExtensible.class.cast(extendedCU).areExtensionsMarkedAsProcessed();
+                              //CompilationUnits.IExtensible.class.cast(extendedCU).areExtensionsMarkedAsProcessed();
+                              CompilationUnits.IExtensible.class.cast(cu).areExtensionsMarkedAsProcessed();
+                                           //in the above statement we should check the extensions processed status on the orig cu
+                                           //and not the extended cu because the extended cu is a clone of base and its 'extensions
+                                           //processed' status is always marked as true. It's instance is valid only for a specific
+                                           //compilationRuntimeContext and doesn't represent the finality. The orig cu however is updated
+                                           //with the final extensions processing status and only if there were no <conditional extends>,
+                                           //<dynamic group idOrElse in the base units> its extension processing status would be set to true.
                         /* if (CompilationUnits.IExtensible.class.cast(extendedCU).areExtensionsMarkedAsProcessed()) {
                             CompilationUnits.IExtensible.class.cast(cu).markExtensionsAsProcessed(
                                                 CompilationUnits.IExtensible.class.cast(extendedCU).areExtensionsMarkedAsProcessed());
@@ -73,10 +96,10 @@ public class CompiledTemplate {
         }
         CompiledTemplate clonedMct = this;
         if (!areAllExtensibleUnitsMarkedAsProcessed) {
-            clonedMct = new CompiledTemplate();  //not all extensions are permanently processed (owing to presence
-                                                    //of some conditional extends etc) and hence we would return a
-                                                    //different instance of compiled template and preserve the original
-                                                    //instance as is for future use.
+            clonedMct = new CompiledTemplate("cloned:" + templateId);  //not all extensions are permanently processed (owing to presence
+                                                                       //of some conditional extends etc) and hence we would return a
+                                                                       //different instance of compiled template and preserve the original
+                                                                       //instance as is for future use.
             clonedMct.addCompilationUnits(compilationUnits);
             clonedMct.extensionsProcessedBefore = true;  //this is a specific instance of mct which is valid only for
                                                          //the current compilationRuntimeContext and thus should be
@@ -90,7 +113,14 @@ public class CompiledTemplate {
             clonedMct.compilationUnits.remove(index + 1);
             if (!areAllExtensibleUnitsMarkedAsProcessed &&
                 entry.getValue() instanceof CompilationUnits.IExtensible &&
-                CompilationUnits.IExtensible.class.cast(entry.getValue()).areExtensionsMarkedAsProcessed()) {
+                //CompilationUnits.IExtensible.class.cast(entry.getValue()).areExtensionsMarkedAsProcessed()) {
+                CompilationUnits.IExtensible.class.cast(entry.getKey()).areExtensionsMarkedAsProcessed()) {
+                                       //in the above statement we should check the extensions processed status on the orig cu (the key
+                                       //in the map) and not the extended cu because the extended cu is a clone of base and its 'extensions
+                                       //processed' status is always marked as true. It's instance is valid only for a specific
+                                       //compilationRuntimeContext and doesn't represent the finality. The orig cu however is updated
+                                       //with the final extensions processing status and only if there were no <conditional extends>,
+                                       //<dynamic group idOrElse in the base units> its extension processing status would be set to true.
                 //the core extensible unit itself is marked as processed so let's update the master copy
                 //with the extended instance
                 //int index = compilationUnits.indexOf(entry.getKey());

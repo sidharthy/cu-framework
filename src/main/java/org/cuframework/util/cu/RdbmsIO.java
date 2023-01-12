@@ -62,6 +62,11 @@ public class RdbmsIO extends HeadlessExecutableGroup implements IExecutable {
     private static final String PARAM_RESULT_SET = "result-set";  //query result set
     private static final String PARAM_CLOSEABLE = "closeable";  //an object that can be closed e.g. connection, statement, result set
 
+    @Override
+    public String getTagName() {
+        return RdbmsIO.TAG_NAME;
+    }
+
     //the result or outcome of the execution should be set inside requestContext as a map and the name of the map key should be returned as the value of the function.
     @Override
     protected String doExecute(Map<String, Object> requestContext) {

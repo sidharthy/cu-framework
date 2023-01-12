@@ -25,7 +25,7 @@
      <!--concat(sum, ' ', add, ' ', minus, ' ', subtract, ' ', multiply, ' ', divide, ' ', mod, ' ', output)-->
      <select id="output">
        <using>
-         <valueof id="result-map" key="$_$execution-result-map">
+         <valueof id="result-map" key="$_execution-resultmap">
            <internal-map/>
          </valueof>
        </using>
@@ -147,7 +147,7 @@
      <valueof default="Test"/>-->
      <on>
        <condition expression="success">
-         <valueof key="_$execution-endstate">
+         <valueof key="_execution-endstate">
            <internal-map/>
          </valueof>
        </condition>
@@ -155,12 +155,12 @@
    </set>
    <set attribute="error" evalIfNull="false">
      <!--translate(this, 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')-->
-     <valueof key="_$execution-outcome">
+     <valueof key="_execution-outcome">
        <internal-map/>
      </valueof>
      <on>
        <condition expression="failure">
-         <valueof key="_$execution-endstate">
+         <valueof key="_execution-endstate">
            <internal-map/>
          </valueof>
        </condition>

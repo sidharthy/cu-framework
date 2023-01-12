@@ -75,6 +75,11 @@ public class HttpIO extends HeadlessExecutableGroup implements IExecutable {
     private static final String PARAM_PROXY_HOST = "proxy-host";  //proxy host to use
     private static final String PARAM_PROXY_PORT = "proxy-port";  //proxy port to use
 
+    @Override
+    public String getTagName() {
+        return HttpIO.TAG_NAME;
+    }
+
     //the result or outcome of the execution should be set inside requestContext as a map and the name of the map key should be returned as the value of the function.
     @Override
     protected String doExecute(Map<String, Object> requestContext) {

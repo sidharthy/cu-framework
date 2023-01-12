@@ -37,18 +37,20 @@ import java.util.logging.Logger;
 import javax.xml.xpath.XPathExpressionException;
 
 import org.cuframework.MapOfMaps;
+import org.cuframework.TemplateCompilationException;
 import org.cuframework.core.CompilationRuntimeContext;
 import org.cuframework.core.CompilationUnits;
 import org.cuframework.core.CompilationUnits.ICompilationUnit;
 import org.cuframework.core.CompilationUnits.Group;
 import org.cuframework.core.CompiledTemplate;
 import org.cuframework.core.CompiledTemplatesRegistry;
+import org.cuframework.ns.NamespaceConfigurer;
 import org.cuframework.util.logging.LogManager;
 
 /**
  * Generic Runner for Compilation Units.
- *
  * @author Sidharth Yadav
+ *
  */
 public class Runner {
     private static final String RESOURCES_DIR = "./resources/";
@@ -56,6 +58,9 @@ public class Runner {
     //sys props
     protected static final String SYS_PROP_CU_DIR = "cu.dir";
     protected static final String SYS_PROP_DEFAULT_CU_START_FILE = "cu.start";
+
+    //other props
+    protected static final String CU_NAMESPACES_GROUP_ID = "-namespaces-";
 
     //runner context identifier keys
     protected static final String DEFAULT_CU_DIR = "DEFAULT_CU_DIR";
@@ -174,17 +179,13 @@ public class Runner {
                                                                                                       XPathExpressionException {
         Group compilationUnit = getCompiledCU(cuFile, cuIdOfDependenciesGroup, Group.class);
         if (compilationUnit != null) {
-            Object dependencies = compilationUnit.build(compilationRuntimeContext, Group.ReturnType.MAP);
+            Object dependencies = compilationUnit.build(compilationRuntimeContext, "map");
             if (dependencies instanceof Map) {
-                for (Map.Entry<String, Object>  entry : ((Map<String, Object>) dependencies).entrySet()) {
-                    String cuTagName = entry.getKey();
-                    Object cuClassName = entry.getValue();
-                    if (cuTagName == null || cuClassName == null) {
-                        continue;
-                    }
-
-                    //register cu
-                    CompilationUnits.setCompilationClassForTag(cuTagName, cuClassName.toString());
+                Object namespaces = ((Map) dependencies).get(CU_NAMESPACES_GROUP_ID);
+                if (namespaces instanceof Map) {
+                    NamespaceConfigurer.configure((Map<String, Object>) namespaces);
+                } else {
+                    log("debug", "init-namespaces (none)", namespaces);
                 }
                 log("debug", "init-dependencies (ok)", dependencies);
             } else {
@@ -202,7 +203,7 @@ public class Runner {
                                                                           throws FileNotFoundException, XPathExpressionException {
         Group compilationUnit = getCompiledCU(cuFile, cuIdOfContextDataGroup, Group.class);
         if (compilationUnit != null) {
-            compilationUnit.build(compilationRuntimeContext, Group.ReturnType.JSON);
+            compilationUnit.build(compilationRuntimeContext, "json");
         }
 
         return compilationRuntimeContext;
@@ -210,7 +211,8 @@ public class Runner {
 
     //subclasses can override as needed
     protected Object doRun(Map<String, Object> contextMap, String cuFile, String cuId) throws XPathExpressionException,
-                                                                                              FileNotFoundException {
+                                                                                              FileNotFoundException,
+                                                                                              TemplateCompilationException {
         MapOfMaps mapOfMaps = new MapOfMaps();
         mapOfMaps.putMap(getRunnerContext().get(CONTEXT_MAP_NAME), contextMap);
 
@@ -224,10 +226,19 @@ public class Runner {
         CompiledTemplate mct = CompiledTemplatesRegistry.getInstance().
                                       processExtensions(CompiledTemplatesRegistry.getInstance().getCompiledTemplate(cuFile),
                                                 compilationRuntimeContext);
+        log("info", "run", "******************** " + cuFile + " ********************");
+        log("info",
+            "run",
+            "Mct extensions processed status - processed instance = " + mct.extensionsProcessed() + " : raw instance " +
+                                                CompiledTemplatesRegistry.getInstance().getCompiledTemplate(cuFile).extensionsProcessed());
 
         Group compilationUnit = getCompiledCU(mct, new String[]{cuId}, Group.class);
 
-        return compilationUnit.build(compilationRuntimeContext, Group.ReturnType.JSON);
+        return compilationUnit.build(compilationRuntimeContext, "json");  //by default we will attempt to return json as the
+                                                                          //output format. This however can be changed using
+                                                                          //the CompilationUnits.PARAM_GROUP_SERIALIZER_TYPE
+                                                                          //internal context attribute of the group inside
+                                                                          //the template xml.
     }
 
     private CompilationRuntimeContext getEmptyCompilationRuntimeContext() {

@@ -44,7 +44,7 @@
           </using>
           <init>
             <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -56,7 +56,7 @@
           </using>
           <init>
             <set attribute="1" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>

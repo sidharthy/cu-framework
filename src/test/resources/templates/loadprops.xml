@@ -11,17 +11,17 @@
        </using>
        <init>
          <set in="CONTEXT-MAP" createMapIfMissing="true" override="false">
-           <valueof key="$_$execution-result-map">
+           <valueof key="$_execution-resultmap">
              <internal-map/>
            </valueof>
          </set>
          <set attribute="-endstate-" in="CONTEXT-MAP">
-           <valueof key="_$execution-endstate">
+           <valueof key="_execution-endstate">
              <internal-map/>
            </valueof>
          </set>
          <set attribute="-outcome-" in="CONTEXT-MAP">
-           <valueof key="_$execution-outcome" default="abc">
+           <valueof key="_execution-outcome" default="abc">
              <internal-map/>
            </valueof>
          </set>

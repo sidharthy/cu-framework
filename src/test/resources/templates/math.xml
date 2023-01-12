@@ -37,7 +37,8 @@
      </set>
    </calculator>
    <set attribute="$$dynamic-attribute-name-for-this-set" breakOnFirstValueSet="false">
-     concat('outcome', ', ',  'key1', ', ', 'key2', ', ', 'prop1', ', ', 'prop2', ', ', 'p3')
+     $outcome, $key1, $key2, $prop1, $prop2, $p3
+     <!-- concat('outcome', ', ',  'key1', ', ', 'key2', ', ', 'prop1', ', ', 'prop2', ', ', 'p3') -->
      <valueof id="outcome" key="-endstate-" default="Default-MyValue1">
        <map name="CONTEXT-MAP"/>
      </valueof>
@@ -74,7 +75,7 @@
          <valueof id="start" default="0"/>
          <!--<valueof id="end" default="10"/>
          <valueof id="times" default="10"/>--> <!--if not value for end or times is specified then the loop will be an endless loop. In such cases a break condition must be specified.-->
-         <valueof id="index" default="index-alias"/>  <!-- Please note that on renaming the accessor keys always use the renamed string to fetch the related value in the loop body.
+         <valueof id="index" default="indexx-alias"/>  <!-- Please note that on renaming the accessor keys always use the renamed string to fetch the related value in the loop body.
                                                            Sometimes it may so happen that the original accessor key (in this case 'index') also returns the correct value when used
                                                            inside translation expression. That is because while evaluating the translation expression we traverse the internal context map
                                                            on all the initialized variables and perform simple string replacements where any word inside the translation expression is simply
@@ -87,26 +88,30 @@
        </using>
        <break>
          <condition expression="true">
-           <valueof>index-alias &gt;= 10</valueof>
+           <!-- <valueof>endless-loop_indexx-alias &gt;= 10</valueof> -->
+           <valueof>$$$gte($endless-loop_indexx-alias,10)</valueof>
          </condition>
        </break>
        <group name="headless" selfSerializationPolicy="value">
          <!--<on>
            <condition expression="0">
-             <valueof>index-alias mod 2</valueof>
+             <valueof>$xpath($endless-loop_indexx-alias mod 2)</valueof>
            </condition>
          </on>-->
-         <set attribute="$index-alias">
+         <set attribute="$endless-loop_indexx-alias">
            <valueof id="item" default="item">
-             concat('item-', index-alias)
+             item-$endless-loop_indexx-alias
+             <!-- concat('item-', endless-loop_indexx-alias) -->
            </valueof>
          </set>
          <set attribute="$$second-set-attribute-name">
            <valueof id="item" default="item">
-             concat('incremented-item-', index-alias + 1)
+             incremented-item-$$$sum($endless-loop_indexx-alias,1)
+             <!-- concat('incremented-item-', endless-loop_indexx-alias + 1) -->
            </valueof>
            <valueof id="second-set-attribute-name" default="ok">
-             concat('item-', index-alias)
+             item-$endless-loop_indexx-alias
+             <!-- concat('item-', endless-loop_indexx-alias) -->
            </valueof>
          </set>
        </group>
@@ -143,8 +148,8 @@
          </valueof>
        </using>
        <headless-group>
-         <set attribute="$item-key">
-           <valueof key="item-value">
+         <set attribute="$loop-map-items_item-key">
+           <valueof key="loop-map-items_item-value">
              <internal-map/>
            </valueof>
          </set>
@@ -167,12 +172,12 @@
        </init>
        <!-- <break>
          <condition expression="true">
-           <valueof>index &gt;= 10</valueof>
+           <valueof>$xpath($loop-map-items_index &gt;= 10)</valueof>
          </condition>
        </break> -->
        <headless-group name="headless" selfSerializationPolicy="value">
-         <set attribute="$item-key">
-           <valueof key="item-value">
+         <set attribute="$loop-map-items_item-key">
+           <valueof key="loop-map-items_item-value">
              <internal-map/>
            </valueof>
          </set>
@@ -200,12 +205,12 @@
        </using>
        <!-- <break>
          <condition expression="true">
-           <valueof>index &gt;= 10</valueof>
+           <valueof>$xpath($loop-map-items_index &gt;= 10)</valueof>
          </condition>
        </break> -->
        <headless-group name="headless" selfSerializationPolicy="value">
-         <set attribute="$item-key">
-           <valueof key="item-value">
+         <set attribute="$loop-map-items_item-key">
+           <valueof key="loop-map-items_item-value">
              <internal-map/>
            </valueof>
          </set>
@@ -222,12 +227,12 @@
        </using>
        <!-- <break>
          <condition expression="true">
-           <valueof>index &gt;= 10</valueof>
+           <valueof>$xpath($loop-map-items_index &gt;= 10)</valueof>
          </condition>
        </break> -->
        <headless-group name="headless" selfSerializationPolicy="value">
-         <set attribute="$item-key-renamed">
-           <valueof key="item-value">
+         <set attribute="$loop-map-items_item-key-renamed">
+           <valueof key="loop-map-items_item-value">
              <internal-map/>
            </valueof>
          </set>
@@ -265,7 +270,7 @@
          <finally>
            <!-- Call to make the list size available outside this looping unit-->
            <set attribute="list-items-loop-size" in="CONTEXT-MAP" createMapIfMissing="true">
-             <valueof key="iterable-size">
+             <valueof key="loop-list-items_iterable-size">
                <internal-map/>
              </valueof>
            </set>
@@ -277,12 +282,12 @@
          </finally>
          <!-- <break>
            <condition expression="true">
-             <valueof>index &gt;= 10</valueof>
+             <valueof>$xpath(loop-list-items_index &gt;= 10)</valueof>
            </condition>
          </break> -->
          <!--<headless-group name="items" childSerializationPolicy="value">-->
-           <set attribute="$item-key">
-             <valueof key="new-item-value-accessor">
+           <set attribute="$loop-list-items_item-key">
+             <valueof key="loop-list-items_new-item-value-accessor">
                <internal-map/>
              </valueof>
            </set>
@@ -297,7 +302,8 @@
          <on>
            <condition expression="true">
              <valueof key="list-items-loop-size">
-               this > 0
+               $$$gt($this,0)
+               <!-- this > 0 -->
                <map name="CONTEXT-MAP"/>
              </valueof>
            </condition>
@@ -330,7 +336,7 @@
          <finally>
            <!-- Call to make the list size available outside this looping unit-->
            <set attribute="array-items-loop-size" in="CONTEXT-MAP" createMapIfMissing="true">
-             <valueof key="iterable-size">
+             <valueof key="loop-array-items_iterable-size">
                <internal-map/>
              </valueof>
            </set>
@@ -342,12 +348,12 @@
          </finally>
          <!-- <break>
            <condition expression="true">
-             <valueof>index &gt;= 10</valueof>
+             <valueof>$xpath($loop-array-items_index &gt;= 10)</valueof>
            </condition>
          </break> -->
          <!--<headless-group name="items" childSerializationPolicy="value">-->
-           <set attribute="$index">
-             <valueof key="item-value">
+           <set attribute="$loop-array-items_index">
+             <valueof key="loop-array-items_item-value">
                <internal-map/>
              </valueof>
            </set>
@@ -362,7 +368,8 @@
          <on>
            <condition expression="true">
              <valueof key="array-items-loop-size">
-               this > 0
+               $$$gt($this,0)
+               <!-- this > 0 -->
                <map name="CONTEXT-MAP"/>
              </valueof>
            </condition>

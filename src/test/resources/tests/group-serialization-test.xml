@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="group-serialization-test.xml">
+  <headless-group id="-test-" selfSerializationPolicy="value" childSerializationPolicy="value">
+    <init>
+      <log id="begin-test-msg" level="info" target="console">
+        <valueof default="Starting Group serialization (as Object/Map) tests..."/>
+      </log>
+    </init>
+    <group name="g1">
+      <group name="-DANGLING-ITEMS-" type="list"/>
+      <group name="g2" selfSerializationPolicy="key" childSerializationPolicy="none">
+        <set attribute="attr1">
+          <valueof default="attr1-v"/>
+        </set>
+      </group>
+      <group name="g3" selfSerializationPolicy="keyValue" childSerializationPolicy="key" type="list">
+        <set attribute="attr2">
+          <valueof default="attr2-v"/>
+        </set>
+        <set attribute="attr3">
+          <valueof default="attr3-v"/>
+        </set>
+      </group>
+      <headless-group name="g3-1" childSerializationPolicy="value">
+        <set attribute="attr2-1">
+          <valueof default="attr2-1-v"/>
+        </set>
+      </headless-group>
+      <group name="g4" childSerializationPolicy="value">
+        <group name="g5">
+          <set attribute="s1">
+            <valueof default="v1"/>
+          </set>
+        </group>
+        <group name="g6" selfSerializationValue="value">
+          <set attribute="s2">
+            <valueof default="v2"/>
+          </set>
+        </group>
+      </group>
+      <group name="g7" type="list">
+        <set attribute="s3">
+          <valueof default="v3"/>
+        </set>
+        <group name="g8">
+          <set attribute="s4">
+            <valueof default="v4"/>
+          </set>
+        </group>
+        <group name="g9" type="list">
+          <set attribute="s5">
+            <valueof default="v5"/>
+          </set>
+        </group>
+      </group>
+    </group>
+    <finally>
+      <log id="end-test-result" level="info" target="console">
+        <valueof key="--test--value">
+          <internal-map/>
+        </valueof>
+      </log>
+      <log id="end-test-msg" level="info" target="console">
+        <valueof default="Finished Group serialization (as Object/Map) tests."/>
+      </log>
+    </finally>
+  </headless-group>
+  <headless-group id="-test-data-">
+    <headless-group id="1">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default=""/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_execution-resultmap">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+        <load-properties id="output">
+          <using>
+            <valueof id="stream" default="result=0"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_execution-resultmap">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+  </headless-group>
+</root>

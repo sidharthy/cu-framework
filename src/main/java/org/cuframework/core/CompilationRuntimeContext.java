@@ -28,6 +28,7 @@
 
 package org.cuframework.core;
 
+import java.util.Collections;
 import java.util.Map;
 
 import org.cuframework.MapOfMaps;
@@ -53,6 +54,10 @@ public class CompilationRuntimeContext {
 
     public MapOfMaps getExternalContext() {
         return externalContext;
+    }
+
+    public Map<String, Object> getImmutableInternalContext() {
+        return internalContextMap != null? Collections.unmodifiableMap(internalContextMap): null;
     }
 
     protected void setInternalContext(Map<String, Object> internalContextMap) {

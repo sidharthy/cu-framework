@@ -21,12 +21,12 @@
        </using>
        <init>
          <log id="rdbms-open-connection-operation-endstate" level="info" target="console">
-           <valueof key="_$execution-endstate">
+           <valueof key="_execution-endstate">
              <internal-map/>
            </valueof>
          </log>
          <log id="rdbms-open-connection-operation-outcome" level="info" target="console">
-           <valueof key="_$execution-outcome">
+           <valueof key="_execution-outcome">
              <internal-map/>
            </valueof>
          </log>
@@ -36,7 +36,7 @@
            </valueof>
            <on>
              <condition expression="success">
-               <valueof key="_$execution-endstate">
+               <valueof key="_execution-endstate">
                  <internal-map/>
                </valueof>
              </condition>
@@ -47,7 +47,8 @@
      <fileio id="output-file">
        <using>
          <select id="path">
-           concat('user-home', '/Desktop/output.txt')
+           $user-home/Desktop/output.txt
+           <!-- concat('user-home', '/Desktop/output.txt') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -77,10 +78,10 @@
      <using>
        <valueof id="start" default="0"/>
      </using>
-     <break>
+     <break id="breakkk">
        <conditional expression="not(1) and not(2)">
          <condition id="1" expression="true">
-           <valueof>index = 0</valueof>
+           <valueof>$$$equals($index,$$$int(0))</valueof>
          </condition>
          <condition id="2" expression="^(.*)$">
            <valueof key="resultset-row">
@@ -131,7 +132,7 @@
            </init>
            <finally>
              <log id="read-operation-endstate" level="info" target="console">
-               <valueof key="_$execution-endstate">
+               <valueof key="_execution-endstate">
                  <internal-map/>
                </valueof>
              </log>
@@ -158,7 +159,8 @@
                    <select id="item-datatype">
                      <using>
                        <valueof id="dynamic-datatype-accessor">
-                         concat('-rdbms-io-result-.rdbms-resultset-row.datatypes.', 'item-key')
+                         -rdbms-io-result-.rdbms-resultset-row.datatypes.$payload-generator_item-key
+                         concat('-rdbms-io-result-.rdbms-resultset-row.datatypes.', 'payload-generator_item-key')
                        </valueof>
                      </using>
                      <conditional>
@@ -170,7 +172,8 @@
                  </using> -->
                  <init>
                    <set attribute="row-header" in="TMP-MAP" createMapIfMissing="true" breakOnFirstValueSet="false">
-                     concat('this', '&#9;', 'item-key')
+                     $this;&#9;$payload-generator_item-key;
+                     <!-- concat('this', '&#9;', 'payload-generator_item-key') -->
                      <valueof id="row-header" key="row-header" default="">
                        <map name="TMP-MAP"/>
                      </valueof>
@@ -185,7 +188,8 @@
                      </on>
                    </set>
                    <set attribute="row-value" in="TMP-MAP" createMapIfMissing="true" breakOnFirstValueSet="false">
-                     concat('this', '&#9;', 'item-value')
+                     $this;&#9;$payload-generator_item-value;
+                     <!-- concat('this', '&#9;', 'payload-generator_item-value') -->
                      <valueof id="row-value" key="row-value" default="">
                        <map name="TMP-MAP"/>
                      </valueof>
@@ -210,9 +214,12 @@
                      </valueof>
                      <valueof id="operation" default="write"/>
                      <select id="payload">
-                       concat('row-header', 'CRLF', 'row-value')
+                       $row-header;$CRLF;$row-value;
+                       <!-- concat('row-header', 'CRLF', 'row-value') -->
                        <using>
                          <valueof id="row-header" key="row-header" evalIfNull="false" default="">
+                           $CRLF;$CRLF;-------------------- rdbms-to-tsv.xml output ($TIME) --------------------$CRLF;$$$str-uppercase($TMP-MAP:row-header);$CRLF
+<ignore/>
                            concat('CRLF', 'CRLF', '-------------------- rdbms-to-tsv.xml output (', 'TIME', ') --------------------', 
                                                  'CRLF', translate('this', 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'CRLF')
                            <map name="TMP-MAP"/>
@@ -225,7 +232,7 @@
                    </using>
                    <finally>
                      <log id="write-operation-endstate" level="info" target="console">
-                       <valueof key="_$execution-endstate">
+                       <valueof key="_execution-endstate">
                          <internal-map/>
                        </valueof>
                      </log>
@@ -250,7 +257,7 @@
      </headless-executable-group>
      <finally>
        <log id="loop-index-value" level="info" target="console">
-         <valueof>index</valueof>
+         <valueof>$index</valueof>
        </log>
      </finally>
    </loop>

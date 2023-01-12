@@ -6,7 +6,8 @@
      <fileio id="inspect-folder">
        <using>
          <select id="path">
-           concat('user-home', '/Desktop/')
+           $user-home/Desktop/
+           <!-- concat('user-home', '/Desktop/') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -35,7 +36,8 @@
      <fileio id="cp-command">
        <using>
          <select id="path">
-           concat('user-home', '/Desktop/test.class')
+           $user-home/Desktop/test.class
+           <!-- concat('user-home', '/Desktop/test.class') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -43,7 +45,8 @@
            </using>
          </select>
          <select id="target">
-           concat('user-home', '/Desktop/test2.class')
+           $user-home/Desktop/test2.class
+           <!-- concat('user-home', '/Desktop/test2.class') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -54,7 +57,7 @@
        </using>
        <init>
          <log id="cp-command" level="info" target="console">
-           <valueof id="endstate" key="_$execution-endstate">
+           <valueof id="endstate" key="_execution-endstate">
              <internal-map/>
            </valueof>
            <valueof id="result" key="-file-io-result-.cp-command">
@@ -66,7 +69,8 @@
      <fileio id="mv-command">
        <using>
          <select id="path">
-           concat('user-home', '/Desktop/test2.class')
+           $user-home/Desktop/test2.class
+           <!-- concat('user-home', '/Desktop/test2.class') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -74,7 +78,8 @@
            </using>
          </select>
          <select id="target">
-           concat('user-home', '/Desktop/test3.class')
+           $user-home/Desktop/test3.class
+           <!-- concat('user-home', '/Desktop/test3.class') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -85,7 +90,7 @@
        </using>
        <init>
          <log id="mv-command" level="info" target="console">
-           <valueof id="endstate" key="_$execution-endstate">
+           <valueof id="endstate" key="_execution-endstate">
              <internal-map/>
            </valueof>
            <valueof id="result" key="-file-io-result-.mv-command">
@@ -97,19 +102,20 @@
      <fileio id="rename-command">
        <using>
          <select id="path">
-           concat('user-home', '/Desktop/test3.class')
+           $user-home/Desktop/test3.class
+           <!-- concat('user-home', '/Desktop/test3.class') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
              </valueof>
            </using>
          </select>
-         <valueof id="target">'test4.class'</valueof>
+         <valueof id="target">test4.class</valueof>
          <valueof id="operation" default="rename"/>
        </using>
        <init>
          <log id="rename-command" level="info" target="console">
-           <valueof id="endstate" key="_$execution-endstate">
+           <valueof id="endstate" key="_execution-endstate">
              <internal-map/>
            </valueof>
            <valueof id="result" key="-file-io-result-.rename-command">
@@ -121,7 +127,8 @@
      <fileio id="del-command">
        <using>
          <select id="path">
-           concat('user-home', '/Desktop/test4.class')
+           $user-home/Desktop/test4.class
+           <!-- concat('user-home', '/Desktop/test4.class') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -132,7 +139,7 @@
        </using>
        <init>
          <log id="del-command" level="info" target="console">
-           <valueof id="endstate" key="_$execution-endstate">
+           <valueof id="endstate" key="_execution-endstate">
              <internal-map/>
            </valueof>
            <valueof id="result" key="-file-io-result-.del-command">
@@ -148,7 +155,8 @@
      <fileio id="input-file">
        <using>
          <select id="path">
-           concat('user-home', '/Desktop/input.txt')
+           $user-home/Desktop/input.txt
+           <!-- concat('user-home', '/Desktop/input.txt') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -170,7 +178,8 @@
      <fileio id="output-file">
        <using>
          <select id="path">
-           concat('user-home', '/Desktop/output.txt')
+           $user-home/Desktop/output.txt
+           <!-- concat('user-home', '/Desktop/output.txt') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -203,7 +212,7 @@
      <break>
        <conditional expression="not(1) and not(2)">
          <condition id="1" expression="true">
-           <valueof>index = 0</valueof>
+           <valueof>$$$equals($index,$$$int(0))</valueof>
          </condition>
          <condition id="2" expression="^(.*)$">
            <valueof key="line-read">
@@ -235,7 +244,7 @@
            </init>
            <finally>
              <log id="read-operation-endstate" level="info" target="console">
-               <valueof key="_$execution-endstate">
+               <valueof key="_execution-endstate">
                  <internal-map/>
                </valueof>
              </log>
@@ -258,7 +267,8 @@
                  </valueof>
                  <valueof id="operation" default="write"/>
                  <valueof id="payload" key="-file-io-result-.result">
-                   concat('this', '&#9;', '_$execution-endstate', '&#9;', 'TIME', 'CRLF')
+                   $this;&#9;$_execution-endstate;&#9;$TIME;$CRLF;
+                   <!-- concat('this', '&#9;', '_execution-endstate', '&#9;', 'TIME', 'CRLF') -->
                    <internal-map/>
                  </valueof>
                </using>
@@ -271,7 +281,7 @@
                </init> -->
                <finally>
                  <log id="write-operation-endstate" level="info" target="console">
-                   <valueof key="_$execution-endstate">
+                   <valueof key="_execution-endstate">
                      <internal-map/>
                    </valueof>
                  </log>
@@ -288,7 +298,7 @@
      </headless-executable-group>
      <finally>
        <log id="loop-index-value" level="info" target="console">
-         <valueof>index</valueof>
+         <valueof>$index</valueof>
        </log>
      </finally>
    </loop>

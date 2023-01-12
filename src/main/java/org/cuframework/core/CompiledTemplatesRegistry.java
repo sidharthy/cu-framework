@@ -39,6 +39,7 @@ import javax.xml.xpath.XPathExpressionException;
 
 import org.w3c.dom.NodeList;
 
+import org.cuframework.TemplateCompilationException;
 import org.cuframework.TemplateXPathEngine;
 
 /**
@@ -47,6 +48,8 @@ import org.cuframework.TemplateXPathEngine;
  *
  */
 public final class CompiledTemplatesRegistry {
+    public static final String TEMPLATE_PATH_SPLITTER = "#";  //# to be used as delimiter
+
     private static final String RESOURCE_META_INF_DIR = "META-INF/";
     private static final String INSTALLED_META_INF_DIR = "/tmp/CU-META-INF/";
 
@@ -85,7 +88,7 @@ public final class CompiledTemplatesRegistry {
         if (cuFQPath == null || "".equals(cuFQPath.trim())) {
             return null;
         }
-        String[] tokens = cuFQPath.split("#");  //# to be used as delimiter
+        String[] tokens = cuFQPath.split(TEMPLATE_PATH_SPLITTER);
         String templateFile = tokens[0];
         try {
             if (tokens.length > 1) {
@@ -101,6 +104,8 @@ public final class CompiledTemplatesRegistry {
         } catch (XPathExpressionException e) {
             // TODO log
         } catch (FileNotFoundException e) {
+            // TODO log
+        } catch (TemplateCompilationException tce) {
             // TODO log
         }
         return null;
@@ -120,18 +125,22 @@ public final class CompiledTemplatesRegistry {
     }
 
     public CompiledTemplate getCompiledTemplate(String templateFile)
-            throws XPathExpressionException, FileNotFoundException {
+            throws XPathExpressionException, FileNotFoundException, TemplateCompilationException {
         return getCompiledTemplate(templateFile, "/root/*");
     }
 
     public CompiledTemplate getCompiledTemplate(String templateFile, String selectQuery)
-                                                              throws XPathExpressionException, FileNotFoundException {
+                                                                  throws XPathExpressionException,
+                                                                         FileNotFoundException,
+                                                                         TemplateCompilationException {
         return getCompiledTemplate(templateFile, selectQuery, primaryLookupDir, secondaryLookupDir);
     }
 
     public CompiledTemplate getCompiledTemplate(String templateFile, String selectQuery,
-                                                             String primaryLookupDir, String secondaryLookupDir)
-                                                              throws XPathExpressionException, FileNotFoundException {
+                                                String primaryLookupDir, String secondaryLookupDir)
+                                                                 throws XPathExpressionException,
+                                                                        FileNotFoundException,
+                                                                        TemplateCompilationException {
         CompiledTemplate mct = compiledTemplatesCache.get(templateFile);
         if (mct == null) {
             mct = getCompiledTemplate(templateFile,
@@ -142,14 +151,15 @@ public final class CompiledTemplatesRegistry {
     }
 
     public CompiledTemplate getCompiledTemplate(String templateUID, InputStream in, String selectQuery)
-                                                              throws XPathExpressionException, FileNotFoundException {
+                                                              throws XPathExpressionException, TemplateCompilationException {
         CompiledTemplate mct = compiledTemplatesCache.get(templateUID);
         if (mct == null) {
             NodeList nl = TemplateXPathEngine.getNodes(selectQuery, in);
-            mct = new CompiledTemplate();
+            mct = new CompiledTemplate(templateUID);
             for (int i = 0; i < nl.getLength(); i++) {
                 CompilationUnits.ICompilationUnit compilationUnit =
-                                            CompilationUnits.getCompilationUnitForTag(nl.item(i).getNodeName());
+                                            CompilationUnits.getCompilationUnitForTag(nl.item(i).getNamespaceURI(),
+                                                                                      nl.item(i).getNodeName());
                 if (compilationUnit != null) {
                     compilationUnit.compile(nl.item(i));
                     mct.addCompilationUnit(compilationUnit);
@@ -174,6 +184,8 @@ public final class CompiledTemplatesRegistry {
             // TODO log
         } catch (FileNotFoundException e) {
             // TODO log
+        } catch (TemplateCompilationException tce) {
+            //TODO log
         }
         return processed;
     }

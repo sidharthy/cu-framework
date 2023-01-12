@@ -35,8 +35,9 @@ import org.cuframework.core.CompilationUnits;
 import org.cuframework.core.CompilationUnits.CompilationUnit;
 import org.cuframework.core.CompilationUnits.Group;
 import org.cuframework.core.CompilationUnits.Group.GroupType;
-import org.cuframework.core.CompilationUnits.Group.ReturnType;
 import org.cuframework.core.CompilationUnits.Group.SerializationPolicy;
+import org.cuframework.core.CompilationUnits.ICompilationUnit;
+import org.cuframework.core.CompilationUnits.IEvaluable;
 import org.cuframework.core.CompilationUnits.Set;
 
 /**
@@ -79,9 +80,9 @@ class JSONSerializerForGroupCU implements ICompilationUnitSerializer {
         String jsonObjKey = groupToSerialize.getIdOrElse(compilationRuntimeContext);  //fall back to name if no id is defined.
                                                                                       //attempting to get the computed value of idOrElse
         String QUOTATION_MARK = groupToSerialize.getQuotationMarks();
-        if (serializeSelfKey && jsonObjKey != null && !"".equals(jsonObjKey)) {
+        if (serializeSelfKey/* && jsonObjKey != null && !"".equals(jsonObjKey)*/) {
             strBuilder.append(QUOTATION_MARK);
-            strBuilder.append(jsonObjKey);
+            strBuilder.append(getNullableSerializableKey(jsonObjKey, groupToSerialize, compilationRuntimeContext));
             strBuilder.append(QUOTATION_MARK);
         }
 
@@ -111,6 +112,19 @@ class JSONSerializerForGroupCU implements ICompilationUnitSerializer {
         return strBuilder.toString();
     }
 
+    private String getNullableSerializableKey(String jsonObjKey,
+                                              ICompilationUnit cu,
+                                              CompilationRuntimeContext compilationRuntimeContext)
+                                                                            throws XPathExpressionException {
+        if (jsonObjKey != null && !"".equals(jsonObjKey)) {
+            return jsonObjKey;
+        }
+
+        //auto generate key for serialization
+        String serializableNodeName = cu.getSerializableNodeName(compilationRuntimeContext);
+        return (serializableNodeName == null? cu.getNodeName(): serializableNodeName) + "-null-" + cu.hashCode();
+    }
+
     private void serializeChildrenOfGroupAsJson(Group groupToSerialize,
                                                 boolean isGroupTypeList,
                                                 SerializationPolicy childSerializationPolicy,
@@ -121,63 +135,49 @@ class JSONSerializerForGroupCU implements ICompilationUnitSerializer {
             return;
         }
         String QUOTATION_MARK = groupToSerialize.getQuotationMarks();
-        CompilationUnits.Set[] sets = groupToSerialize.getChildren(CompilationUnits.Set.class);
-        boolean hasSetAtleastOneValue = false;
-        for (int i = 0; i < sets.length; i++) {
-            Set set = sets[i];
-            String attributeToSet = set.getAttributeToSet(compilationRuntimeContext);  //attempting to get the computed value of attribute
-            Object value = set.getValue(compilationRuntimeContext);
-
-            if (value == null && !set.doOutputNullValue()) {
-                continue;
-            }
-
+        CompilationUnits.ICompilationUnit[] children = groupToSerialize.getChildren(CompilationUnits.ICompilationUnit.class);
+        //boolean hasSetAtleastOneValue = false;
+        for (int i = 0; i < children.length; i++) {
+            ICompilationUnit child = children[i];
             boolean hasSetThisValue = false;
-
-            boolean serializeKey = childSerializationPolicy == SerializationPolicy.ALL ||
-                                   childSerializationPolicy == SerializationPolicy.ONLYKEY;
-            boolean serializeValue = childSerializationPolicy == SerializationPolicy.ALL ||
-                                     childSerializationPolicy == SerializationPolicy.ONLYVALUE;
-            hasSetThisValue = serializeKey;  //if the key is to be serialized then some output will definitely
-                                             //be generated
-            if (serializeKey) {
-                strBuilder.append(QUOTATION_MARK);
-                strBuilder.append(attributeToSet);
+            if (child instanceof Set) {
+                Set setToSerialize = (Set) child;
+                String attributeToSet = setToSerialize.getAttributeToSet(compilationRuntimeContext);  //attempting to get the computed value of attribute
+                Object value = setToSerialize.getValue(compilationRuntimeContext);
+                hasSetThisValue = serializeEvaluableOfGroupAsJson(setToSerialize,
+                                                            attributeToSet,
+                                                            value,
+                                                            setToSerialize.doOutputNullValue(),
+                                                            QUOTATION_MARK,
+                                                            isGroupTypeList,
+                                                            childSerializationPolicy,
+                                                            strBuilder,
+                                                            compilationRuntimeContext);
+            } else if (child instanceof Group) {
+                hasSetThisValue = serializeSubgroupOfGroupAsJson((Group) child,
+                                                                 childSerializationPolicy,
+                                                                 strBuilder,
+                                                                 compilationRuntimeContext);
+            } else if (child instanceof IEvaluable) {
+                IEvaluable evaluable = (IEvaluable) child;
+                String key = evaluable.getIdOrElse(compilationRuntimeContext);
+                Object value = evaluable.getValue(compilationRuntimeContext);
+                hasSetThisValue = serializeEvaluableOfGroupAsJson(evaluable,
+                                                            key,
+                                                            value,
+                                                            evaluable.doOutputNullValue(),
+                                                            QUOTATION_MARK,
+                                                            isGroupTypeList,
+                                                            childSerializationPolicy,
+                                                            strBuilder,
+                                                            compilationRuntimeContext);
             }
 
-            if (childSerializationPolicy == SerializationPolicy.ONLYKEY) {
-                strBuilder.append(QUOTATION_MARK);  //let's close the quotes enclosing the key
-            }
-
-            if (childSerializationPolicy == SerializationPolicy.ALL) {
-                //key would have already been serialized. Let's add necessary separators (colon or equals sign)
-                //before we attempt serialization of value.
-                strBuilder.append(isGroupTypeList ? "=" : QUOTATION_MARK + ":");
-            }
-
-            if (serializeValue) {
-                if (value != null) {
-                    strBuilder.append(isGroupTypeList ?
-                                      (!serializeKey ? QUOTATION_MARK : "") :  //if no key was serialized then also we need
-                                                                               //to start the value with a quote or else the
-                                                                               //generated json would be malformed
-                                      QUOTATION_MARK);
-                    strBuilder.append(value);
-                    strBuilder.append(QUOTATION_MARK);
-
-                    hasSetThisValue = true;  //some output is definitely generated
-
-                } else if (serializeKey) {  //only if the key was serialized it makes sense to
-                                            //accommodate null value
-                    strBuilder.append(isGroupTypeList ? "" : "null");
-                }
-            }
-
-            if (hasSetThisValue && i != sets.length - 1) {
+            if (hasSetThisValue && i != children.length - 1) {
                 strBuilder.append(",");
             }
 
-            hasSetAtleastOneValue = hasSetAtleastOneValue || hasSetThisValue;  //let's re-evaluate
+            //hasSetAtleastOneValue = hasSetAtleastOneValue || hasSetThisValue;  //let's re-evaluate
                                                                                //'hasSetAtleastOneValue' so that it
                                                                                //can be assigned a true value (if that
                                                                                //has not yet happened owing to the
@@ -186,51 +186,103 @@ class JSONSerializerForGroupCU implements ICompilationUnitSerializer {
         }
 
         if (strBuilder.length() > 0 && ',' == strBuilder.charAt(strBuilder.length() - 1)) {
-            //if there is a residual comma left after serializing all Set CUs (owing to the control exercised by
+            //if there is a residual comma left after serializing all eligible child CUs (owing to the control exercised by
             //the childSerializationPolicy) then we need to trim it
             strBuilder.deleteCharAt(strBuilder.length() - 1);
         }
+    }
 
-        Group[] groups = groupToSerialize.getChildren(Group.class);
+    //returns true iff a value was serialized and appended to the strBuilder passed as param.
+    private boolean serializeEvaluableOfGroupAsJson(IEvaluable evaluable,
+                                                    String attributeToSet,
+                                                    Object value,
+                                                    boolean outputNullValue,
+                                                    String QUOTATION_MARK,
+                                                    boolean isParentGroupTypeList,
+                                                    SerializationPolicy childSerializationPolicyOfParentGroup,
+                                                    StringBuilder strBuilder,
+                                                    CompilationRuntimeContext compilationRuntimeContext)
+                                                                                    throws XPathExpressionException {
+        //String QUOTATION_MARK = parentGroup.getQuotationMarks();
 
-        if (hasSetAtleastOneValue && groups.length != 0) {
-            strBuilder.append(",");
+        //String attributeToSet = setToSerialize.getAttributeToSet(compilationRuntimeContext);  //attempting to get the computed value of attribute
+        //Object value = setToSerialize.getValue(compilationRuntimeContext);
+
+        if (value == null && !outputNullValue) {
+            return false;
         }
 
-        for (int i = 0; i < groups.length; i++) {
-            Group group = groups[i];
+        boolean hasSetThisValue = false;
 
-            Object groupAsJsonTmp = "";
-            try {
-                /********************************************************************************************/
-                //adjust serialization policies of child group according to the policies of the parent group.
-                if (childSerializationPolicy != SerializationPolicy.ALL) {
-                    group.setSelfSerializationPolicyRuntime(childSerializationPolicy);
-                } else {
-                    //if the child serialization policy of the current group is ALL then we don't want
-                    //to make any change to the self serialization policy of the child group.
-                    group.setSelfSerializationPolicyRuntime(group.getSelfSerializationPolicy());
-                }
-                /********************************************************************************************/
+        boolean serializeKey = childSerializationPolicyOfParentGroup == SerializationPolicy.ALL ||
+                               childSerializationPolicyOfParentGroup == SerializationPolicy.ONLYKEY;
+        boolean serializeValue = childSerializationPolicyOfParentGroup == SerializationPolicy.ALL ||
+                                 childSerializationPolicyOfParentGroup == SerializationPolicy.ONLYVALUE;
+        hasSetThisValue = serializeKey;  //if the key is to be serialized then some output will definitely
+                                         //be generated
+        if (serializeKey) {
+            strBuilder.append(QUOTATION_MARK);
+            strBuilder.append(getNullableSerializableKey(attributeToSet, evaluable, compilationRuntimeContext));
+        }
 
-                groupAsJsonTmp = group.build(compilationRuntimeContext, ReturnType.JSON);  //serialize the group
-            } finally {
-                //reset the runtime serialization policies of the child group to its original ones to ensure there
-                //is no side effects on its future serialization that might take place in a different context (e.g.
-                //attempt to find and serialize this child group independently).
-                group.setSelfSerializationPolicyRuntime(group.getSelfSerializationPolicy());
-                group.setChildSerializationPolicyRuntime(group.getChildSerializationPolicy());
+        if (childSerializationPolicyOfParentGroup == SerializationPolicy.ONLYKEY) {
+            strBuilder.append(QUOTATION_MARK);  //let's close the quotes enclosing the key
+        }
+
+        if (childSerializationPolicyOfParentGroup == SerializationPolicy.ALL) {
+            //key would have already been serialized. Let's add necessary separators (colon or equals sign)
+            //before we attempt serialization of value.
+            strBuilder.append(isParentGroupTypeList ? "=" : QUOTATION_MARK + ":");
+        }
+
+        if (serializeValue) {
+            if (value != null) {
+                strBuilder.append(isParentGroupTypeList ?
+                                  (!serializeKey ? QUOTATION_MARK : "") :  //if no key was serialized then also we need
+                                                                           //to start the value with a quote or else the
+                                                                           //generated json would be malformed
+                                  QUOTATION_MARK);
+                strBuilder.append(value);
+                strBuilder.append(QUOTATION_MARK);
+
+                hasSetThisValue = true;  //some output is definitely generated
+
+            } else if (serializeKey) {  //only if the key was serialized it makes sense to
+                                        //accommodate null value
+                strBuilder.append(isParentGroupTypeList ? "" : "null");
             }
-            strBuilder.append(groupAsJsonTmp);
-            if (i != groups.length - 1 && !"".equals(groupAsJsonTmp)) {
-                strBuilder.append(",");
+        }
+        return hasSetThisValue;
+    }
+
+    //returns true iff a value was serialized and appended to the strBuilder passed as param.
+    private boolean serializeSubgroupOfGroupAsJson(Group subgroupToSerialize,
+                                                   SerializationPolicy childSerializationPolicyOfParentGroup,
+                                                   StringBuilder strBuilder,
+                                                   CompilationRuntimeContext compilationRuntimeContext)
+                                                                                   throws XPathExpressionException {
+        Object groupAsJsonTmp = "";
+        try {
+            /********************************************************************************************/
+            //adjust serialization policies of child group according to the policies of the parent group.
+            if (childSerializationPolicyOfParentGroup != SerializationPolicy.ALL) {
+                subgroupToSerialize.setSelfSerializationPolicyRuntime(childSerializationPolicyOfParentGroup);
+            } else {
+                //if the child serialization policy of the current group is ALL then we don't want
+                //to make any change to the self serialization policy of the child group.
+                subgroupToSerialize.setSelfSerializationPolicyRuntime(subgroupToSerialize.getSelfSerializationPolicy());
             }
+            /********************************************************************************************/
+
+            groupAsJsonTmp = subgroupToSerialize.build(compilationRuntimeContext, "json");  //serialize the group
+        } finally {
+            //reset the runtime serialization policies of the child group to its original ones to ensure there
+            //is no side effects on its future serialization that might take place in a different context (e.g.
+            //attempt to find and serialize this child group independently).
+            subgroupToSerialize.setSelfSerializationPolicyRuntime(subgroupToSerialize.getSelfSerializationPolicy());
+            subgroupToSerialize.setChildSerializationPolicyRuntime(subgroupToSerialize.getChildSerializationPolicy());
         }
-        
-        if (strBuilder.length() > 0 && ',' == strBuilder.charAt(strBuilder.length() - 1)) {
-            //if there is a residual comma left after serializing all Set CUs (owing to the control exercised by
-            //the childSerializationPolicy on group serialization in the above block) then we need to trim it
-            strBuilder.deleteCharAt(strBuilder.length() - 1);
-        }
+        strBuilder.append(groupAsJsonTmp);
+        return !"".equals(groupAsJsonTmp);
     }
 }

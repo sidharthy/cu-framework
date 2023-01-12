@@ -31,14 +31,11 @@ package org.cuframework.func;
 import org.cuframework.core.CompilationRuntimeContext;
 
 /**
-  Functional interface of Compilation Units Framework's function library.
-  @author Sidharth Yadav
+ * Functional interface of Compilation Units Framework's function library.
+ * @author Sidharth Yadav
+ *
  */
-
 @FunctionalInterface
 public interface IFunction { 
-    //Though compilationRuntimeContext is not yet needed by most of the function implementations
-    //but nevertheless passing it as one of the parameters to be able to support future enhancements
-    //where cus are passed as parameters (as reference/pointer) and needs to be executed/evaluated.
     Object invoke(Object[] context, CompilationRuntimeContext compilationRuntimeContext) throws Exception;
 }

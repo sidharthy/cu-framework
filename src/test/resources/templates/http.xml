@@ -4,7 +4,7 @@
  <headless-executable-group id="executioner">
    <using>
      <http id="login">
-       $_$execution-endstate $-http-io-result-.login.http-client
+       $$$array($_execution-endstate,$-http-io-result-.login.http-client)
        <using>
          <valueof id="uri" key="login-uri" default="http://localhost/login">
            <map name="CONTEXT-MAP"/>
@@ -12,7 +12,8 @@
          <select id="headers">
            <conditional extractionExpression="\t">
              <valueof>
-               concat('Content-Type', '	', 'application/x-www-form-urlencoded')
+               Content-Type	application/x-www-form-urlencoded
+               <!-- concat('Content-Type', '	', 'application/x-www-form-urlencoded') -->
              </valueof>
            </conditional>
          </select>
@@ -24,12 +25,12 @@
        </using>
        <init>
          <log id="http-operation-endstate" level="info" target="console">
-           <valueof key="_$execution-endstate">
+           <valueof key="_execution-endstate">
              <internal-map/>
            </valueof>
          </log>
          <log id="http-operation-outcome" level="info" target="console">
-           <valueof key="_$execution-outcome">
+           <valueof key="_execution-outcome">
              <internal-map/>
            </valueof>
          </log>
@@ -52,7 +53,7 @@
            $-http-io-result-.get-api.http-client
            <on>
              <condition expression="success">
-               <valueof key="_$execution-endstate">
+               <valueof key="_execution-endstate">
                  <internal-map/>
                </valueof>
              </condition>
@@ -68,12 +69,12 @@
            </using>
            <init>
              <log id="http-operation-endstate" level="info" target="console">
-               <valueof key="_$execution-endstate">
+               <valueof key="_execution-endstate">
                  <internal-map/>
                </valueof>
              </log>
              <log id="http-operation-outcome" level="info" target="console">
-               <valueof key="_$execution-outcome">
+               <valueof key="_execution-outcome">
                  <internal-map/>
                </valueof>
              </log>

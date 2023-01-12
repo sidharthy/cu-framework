@@ -6,7 +6,8 @@
      <fileio id="input-file">
        <using>
          <select id="path">
-           concat('user-home', '/Desktop/tsv-to-rdbms.txt')
+           $user-home/Desktop/tsv-to-rdbms.txt
+           <!-- concat('user-home', '/Desktop/tsv-to-rdbms.txt') -->
            <using>
              <valueof id="user-home" key="user.home">
                <map name="SYSTEM-MAP" keyDelimiter=";"/>
@@ -43,12 +44,12 @@
        </using>
        <init>
          <log id="rdbms-open-connection-operation-endstate" level="info" target="console">
-           <valueof key="_$execution-endstate">
+           <valueof key="_execution-endstate">
              <internal-map/>
            </valueof>
          </log>
          <log id="rdbms-open-connection-operation-outcome" level="info" target="console">
-           <valueof key="_$execution-outcome">
+           <valueof key="_execution-outcome">
              <internal-map/>
            </valueof>
          </log>
@@ -58,7 +59,7 @@
            </valueof>
            <on>
              <condition expression="success">
-               <valueof key="_$execution-endstate">
+               <valueof key="_execution-endstate">
                  <internal-map/>
                </valueof>
              </condition>
@@ -80,7 +81,7 @@
      <break>
        <conditional expression="not(1) and not(2)">
          <condition id="1" expression="true">
-           <valueof>index = 0</valueof>
+           <valueof>$$$equals($index, $$$int(0))</valueof>
          </condition>
          <condition id="2" expression="^(.*)$">
            <valueof key="line-read">
@@ -112,7 +113,7 @@
            </init>
            <finally>
              <log id="read-operation-endstate" level="info" target="console">
-               <valueof key="_$execution-endstate">
+               <valueof key="_execution-endstate">
                  <internal-map/>
                </valueof>
              </log>
@@ -139,12 +140,12 @@
                </using>
                <init>
                  <log id="insert-operation-endstate" level="info" target="console">
-                   <valueof key="_$execution-endstate">
+                   <valueof key="_execution-endstate">
                      <internal-map/>
                    </valueof>
                  </log>
                  <log id="insert-operation-outcome" level="info" target="console">
-                   <valueof key="_$execution-outcome">
+                   <valueof key="_execution-outcome">
                      <internal-map/>
                    </valueof>
                  </log>
@@ -156,7 +157,7 @@
      </headless-executable-group>
      <finally>
        <log id="loop-index-value" level="info" target="console">
-         <valueof>index</valueof>
+         <valueof>$index</valueof>
        </log>
      </finally>
    </loop>

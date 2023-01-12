@@ -8,12 +8,13 @@
       </log>
       <set attribute="this-value" in="tmp-map" createMapIfMissing="true">
         <valueof key="--test--value">
-          concat('{', 'this', '}')
+          {$this}
+          <!-- concat('{', 'this', '}') -->
           <internal-map/>
         </valueof>
       </set>
       <set attribute="is-summation-result-equal" in="tmp-map" createMapIfMissing="true" breakOnFirstValueSet="false">
-        '1' = '2'
+        $$$equals($1,$2)
         <valueof id="1" key="-test-.result">
           <json container="tmp-map" name="this-value"/>
         </valueof>
@@ -46,7 +47,7 @@
           </using>
           <init>
             <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -58,7 +59,7 @@
           </using>
           <init>
             <set attribute="1" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -75,7 +76,7 @@
           </using>
           <init>
             <set attribute="2" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -87,7 +88,7 @@
           </using>
           <init>
             <set attribute="2" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>

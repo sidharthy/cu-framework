@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <root id="mix-tests.xml">
- <calculator id="-test-" xmlns="my_testing_namespace"
+ <calculator id="-test-"
                                   >  <!-- if pgvif is defined here (irrespective of its value) then the execution of the finally block of this group is -->
                                                  <!-- guaranteed to happen even if some exception occurs during processing of this group or any of its descendant(s) --> 
    <extends default="../templates/math.xml#calculator"/>
@@ -27,7 +27,7 @@
      <headless-executable-group id="conditional-assertions">
        <on>
          <condition expression="success">
-           <valueof key="_$execution-endstate">
+           <valueof key="_execution-endstate">
              <internal-map/>
            </valueof>
          </condition>
@@ -37,7 +37,8 @@
            <valueof default="Starting..."/>
          </log>
          <set attribute="is-operation-value-same-in-internal-and-context-maps" in="CONTEXT-MAP" createMapIfMissing="true" breakOnFirstValueSet="false">
-           '1' = '2'
+           $$$equals($1, $2)
+           <!-- '1' = '2' -->
            <valueof id="1" key="operation">
              <map name="CONTEXT-MAP"/>
            </valueof>
@@ -75,7 +76,7 @@
    </init>
    <finally>
      <!-- Playing with logging inside loop -->
-     <loop>
+     <loop id="loop">
        <using>
          <valueof id="times" default="10"/>
        </using>
@@ -83,42 +84,44 @@
          <init>
            <assert id="assertion-inside-loop" expression="1">
              <condition id="1" expression="true">
-               <valueof>index &lt; 10</valueof>
+               <valueof>$$$lt($loop_index, 10)</valueof>
              </condition>
            </assert>
            <log id="test-loop-even-index-logger" level="$log-level">
              <using>
                <select id="log-level">
-                 translate('this', 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+                 $$$str-uppercase($this)
+                 <!-- translate('this', 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') -->
                  <conditional expression="1" value="warning">
                    <condition id="1" expression="true">
-                     <valueof>index = 2</valueof>
+                     <valueof>$$$equals($loop_index, $$$int(2))</valueof>
                    </condition>
                  </conditional>
                  <conditional expression="1" value="severe">
                    <condition id="1" expression="true">
-                     <valueof>index = 4</valueof>
+                     <valueof>$$$equals($loop_index, $$$int(4))</valueof>
                    </condition>
                  </conditional>
                  <conditional expression="1" value="none">
                    <condition id="1" expression="true">
-                     <valueof>index = 6</valueof>
+                     <valueof>$$$equals($loop_index, $$$int(6))</valueof>
                    </condition>
                  </conditional>
                </select>
                <!-- <valueof id="log-level" default="severe">
                  <on>
                    <condition expression="true">
-                     <valueof>index = 6</valueof>
+                     <valueof>$$$equals($loop_index, $$$int(6))</valueof>
                    </condition>
                  </on>
                </valueof> -->
              </using>
-             <valueof>index</valueof>
+             <valueof>$loop_index</valueof>
              <on>
                <condition expression="0">
                  <valueof>
-                   index mod 2
+                   $$$mod($loop_index, 2)
+                   <!-- index mod 2 -->
                  </valueof>
                </condition>
              </on>
@@ -129,7 +132,8 @@
      <!-- end - logging inside loop -->
 
      <set attribute="post-processing-num-items-in-internal-map-should-be-same-as-before" in="tmp-map" createMapIfMissing="true" breakOnFirstValueSet="false">
-       v1 = (v2 - 2) <!-- we are doing minus 2 here because, one - the result of calculator-test cu was not available inside the init but is available inside finally
+       $$$equals($v1, $$$subtract($v2, 2))
+       <!-- v1 = (v2 - 2) we are doing minus 2 here because, one - the result of calculator-test cu was not available inside the init but is available inside finally
                           and two - this set unit would have initialized one extra variable of its own (i.e. corresponding to v1) by the time v2 got processed.
                           If positions of v1 and v2 are interchanged below then by the time inspection of internal-map happened v1 would not have been defined and in
                           that case we just have to subtract 1 i.e. corresponding to the result object of the calculator-test cu.
@@ -156,7 +160,8 @@
      </unset>
      <log id="logging-assertion-results"> <!-- demonstrating logging of assertion results -->
        <assert id="calculator:check-operation" expression="1">
-         concat('Test passed = ', 'this')  <!-- instead of just true, returning a more verbose string -->
+         Test passed = $this
+         <!-- concat('Test passed = ', 'this') -->  <!-- instead of just true, returning a more verbose string -->
          <condition id="1" expression=".*">
            <valueof key="operation">
              <map name="CONTEXT-MAP"/>
@@ -226,7 +231,8 @@
        </assert>
        <set attribute="this-value" in="this-value-tmp-map" createMapIfMissing="true">
          <valueof key="-sub-calculator-value">
-           concat('{', 'this', '}')
+           {$this}
+           <!-- concat('{', 'this', '}') -->
            <internal-map/>
          </valueof>
        </set>
@@ -252,39 +258,39 @@
    <group name="looping-context-map">
      <loop name="loop-map-items">
        <init>
-         <assert id="comtext-map-loop:iterable-should-be-present-inside-internal-context" expression="1">
+         <assert id="context-map-loop:iterable-should-be-present-inside-internal-context" expression="1">
            <condition id="1" expression=".*">
              <valueof key="iterable">
                <internal-map/>
              </valueof>
            </condition>
          </assert>
-         <!--<assert id="comtext-map-loop:map-size-should-be-present-inside-internal-context" expression="1">
+         <!--<assert id="context-map-loop:map-size-should-be-present-inside-internal-context" expression="1">
            <condition id="1" expression=".*">
-             <valueof key="iterable-size">
+             <valueof key="loop-map-items_iterable-size">
                <internal-map/>
              </valueof>
            </condition>
          </assert>-->
        </init>
        <finally>
-         <assert id="comtext-map-loop:map-size-should-be-present-inside-internal-context" expression="1">
+         <assert id="context-map-loop:map-size-should-be-present-inside-internal-context" expression="1">
            <condition id="1" expression=".*">
-             <valueof key="iterable-size">
+             <valueof key="loop-map-items_iterable-size">
                <internal-map/>
              </valueof>
            </condition>
          </assert>
-         <assert id="comtext-map-loop:item-key-should-not-be-present-inside-internal-context" expression="not(1)">
+         <assert id="context-map-loop:item-key-should-not-be-present-inside-internal-context" expression="not(1)">
            <condition id="1" expression=".*">
-             <valueof key="item-key">
+             <valueof key="loop-map-items_item-key">
                <internal-map/>
              </valueof>
            </condition>
          </assert>
-         <assert id="comtext-map-loop:item-value-should-not-be-present-inside-internal-context" expression="not(1)">
+         <assert id="context-map-loop:item-value-should-not-be-present-inside-internal-context" expression="not(1)">
            <condition id="1" expression=".*">
-             <valueof key="item-value">
+             <valueof key="loop-map-items_item-value">
                <internal-map/>
              </valueof>
            </condition>
@@ -292,7 +298,7 @@
        </finally>
      </loop>
      <finally>
-       <assert id="comtext-map:iterable-should-be-null-by-now-inside-internal-context" expression="not(1)">
+       <assert id="context-map:iterable-should-be-null-by-now-inside-internal-context" expression="not(1)">
          <condition id="1" expression=".*">
            <valueof key="iterable">
              <internal-map/>
@@ -358,7 +364,7 @@
           </using>
           <init>
             <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -375,7 +381,7 @@
           </using>
           <init>
             <set attribute="2" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -392,7 +398,7 @@
           </using>
           <init>
             <set attribute="3" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -409,7 +415,7 @@
           </using>
           <init>
             <set attribute="4" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -426,7 +432,7 @@
           </using>
           <init>
             <set attribute="5" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -443,7 +449,7 @@
           </using>
           <init>
             <set attribute="6" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -460,7 +466,7 @@
           </using>
           <init>
             <set attribute="7" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -477,7 +483,7 @@
           </using>
           <init>
             <set attribute="8" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -494,7 +500,7 @@
           </using>
           <init>
             <set attribute="9" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
-              <valueof key="$_$execution-result-map">
+              <valueof key="$_execution-resultmap">
                 <internal-map/>
               </valueof>
             </set>
@@ -502,5 +508,18 @@
         </load-properties>
       </init>
     </headless-group>
+ </headless-group>
+ <headless-group id="-dependencies-">
+   <group id="-namespaces-">
+     <group id="my_math_namespace">
+       <get id="-uri-" default="my_math_namespace"/>
+       <executable-group id="-cus-">
+         <using>
+           <get id="DOLLAR" default="$"/>
+         </using>
+         <get id="dummy-cu">org.cuframework.core.CompilationUnits$DOLLAR;Get</get>
+       </executable-group>
+     </group>
+   </group>
  </headless-group>
 </root>

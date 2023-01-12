@@ -20,7 +20,7 @@
         </valueof>
       </set>
     </init>
-    <loop>
+    <loop id="sum-loop">
       <using>
         <valueof id="iterable" key="list-items">
           <map name="CONTEXT-MAP"/>
@@ -30,7 +30,7 @@
       <headless-group>
         <init>
           <set attribute="sum" in="CONTEXT-MAP" breakOnFirstValueSet="false">
-            sum + item-value
+            $$$sum($sum,$sum-loop_item-value)
             <valueof id="sum" key="sum" default="0">
               <map name="CONTEXT-MAP"/>
             </valueof>

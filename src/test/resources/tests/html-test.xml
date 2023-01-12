@@ -1,0 +1,567 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="html-test.xml">
+  <headless-group id="-test-" selfSerializationPolicy="value" childSerializationPolicy="value">
+    <extends default="../templates/html.xml#html"/>
+    <init>
+      <log id="begin-test-msg" level="info" target="console">
+        <valueof default="Starting html tests..."/>
+      </log>
+    </init>
+    <finally>
+      <log id="end-test-msg" level="info" target="console">
+        <valueof id="computed-html" key="--test--value"><internal-map/></valueof>
+        <valueof id="internal-map"><internal-map/></valueof>
+        <valueof default="Finished html tests."/>
+      </log>
+    </finally>
+  </headless-group>
+  <headless-group id="-test-data-">
+    <headless-group id="1">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="src" default="src/test/resources/files/html-props"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_execution-resultmap">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+        <load-properties id="output">
+          <using>
+            <valueof id="stream" default="result=0"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_execution-resultmap">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+  </headless-group>
+  <headless-executable-group id="-dependencies-">
+    <using>
+      <get id="DOLLAR" default="$"/>
+    </using>
+    <group id="-namespaces-">
+      <group id="html5">
+        <!-- <group id="-classpath-" childSerializationPolicy="value"> -->
+        <group id="-classpath-">
+          <!-- <get id="javax-mail" default="-uri-of-javax-mail-jar-file-"/> -->
+          <finally>
+            <log id="classpaths" target="console">
+              <get id="classpaths" key="--classpath--value">
+                <internal-map/>
+              </get>
+            </log>
+          </finally>
+        </group>
+        <group id="-config-">
+          <get id="cumetadata.executable-group.mergeable-attrs" default="style"/>
+          <get id="cumetadata.executable-group.style.tokenizer" default=" "/>
+        </group>
+        <get id="-name-" default="html5"/>
+        <get id="-uri-" default="html5"/>
+        <cu-text id="-functions-">
+          <valueof id="uppercasestr">
+            $$$str-uppercase($CONTEXT-MAP:-current-function-context-[0])
+          </valueof>
+          <select id="sum">
+            $$$sum($1,$2)
+            <using>
+              <valueof id="1" key="-current-function-context-[0]">
+                <map name="CONTEXT-MAP"/>
+              </valueof>
+              <valueof id="2" key="-current-function-context-[1]">
+                <map name="CONTEXT-MAP"/>
+              </valueof>
+            </using>
+          </select>
+          <loop id="sum-array">
+            $$$sum($sum-array_item-value, $sum-array_itr-value)
+            <using>
+              <valueof id="iterable" key="-current-function-context-">
+                <map name="CONTEXT-MAP"/>
+              </valueof>
+              <valueof id="result" default="0"/>
+              <valueof id="itr-combinator" default="disabled"/>
+            </using>
+          </loop>
+          <valueof id="hello">
+            Hello, $CONTEXT-MAP:-current-function-context-[0];!
+            <using>
+              <valueof id="name" key="-current-function-context-[0]">
+                <map name="CONTEXT-MAP"/>
+              </valueof>
+            </using>
+          </valueof>
+        </cu-text>
+        <group name="-cus-">
+          <group id="error-msg">
+            <group id="-attributes-">
+              <get id="style" default="color:red;"/>
+              <get id="tbt" default="child"/>
+              <get id="serializableNodeName" default="span"/>
+            </group>
+            <get id="-class-">org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup</get>
+          </group>
+          <group id="product-table">
+            <group id="-attributes-">
+              <get id="style" default="color:red;"/>
+              <get id="tbt" default="child"/>
+              <get id="serializableNodeName" default="div"/>
+            </group>
+            <cu-text id="-body-">
+              <loop id="prod-tbl-loop">
+                <using>
+                  <valueof id="start" default="0"/>
+                  <valueof id="end" default="10"/>
+                  <valueof id="itr-joiner" default=", "/>
+                </using>
+                <group>I am good $prod-tbl-loop_index</group>
+              </loop>
+              <group>, I am outside the loop</group>
+            </cu-text>
+            <get id="-class-">org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup</get>
+          </group>
+
+          <group id="product-table-2">
+            <group id="-attributes-">
+              <get id="style" default="color:green;"/>
+              <get id="tbt" default="child"/>
+              <get id="serializableNodeName" default="div"/>
+            </group>
+            <cu-text id="-body-">
+              <table id="prodtbl$$$int(1)" style="width:500px;" xmlns="html5">
+                <using>
+                  <valueof id="num-rows" default="10"/>
+                  <valueof id="num-cols" default="5"/>
+                  <!-- <valueof id="cell-width">concat('width:',100 div 5,'%')</valueof> -->
+                  <valueof id="cell-width">width:$$$div(100,5)%</valueof>
+                </using>
+                <tr id="header-row" style="background:yellow;">
+                  <loop id="header">
+                    <using>
+                      <valueof id="times">$num-cols</valueof>
+                      <!-- <valueof id="itr-joiner" default=""/> -->
+                    </using>
+                    <th id="$header_index" style="$cell-width" tbt="child">
+                      <![CDATA[Header ]]>$header_index
+                    </th>
+                  </loop>
+                </tr>
+                <loop id="rows">
+                  <using>
+                    <valueof id="times">$num-rows</valueof>
+                    <!-- <valueof id="itr-joiner" default=""/> -->
+                  </using>
+                  <tr id="$rows_index">
+                    <loop id="cells">
+                      <using>
+                        <valueof id="times">$num-cols</valueof>
+                        <!-- <valueof id="itr-joiner" default=""/> -->
+                      </using>
+                      <td id="$cells_index" style="$cell-width" tbt="child">
+                        Cell $cells_index
+                      </td>
+                    </loop>
+                  </tr>
+                </loop>
+              </table>
+            </cu-text>
+            <get id="-class-">org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup</get>
+          </group>
+
+          <group id="cvalueof">
+            <get id="-class-">org.cuframework.core.CompilationUnits$DOLLAR;ValueOf</get>
+          </group>
+
+          <set attribute="a">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="abbr">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="acronym">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="address">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="applet">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="area">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="article">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="aside">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="audio">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="b">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="base">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="basefont">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="bdi">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="bdo">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="big">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="blockquote">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="body">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="br">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="button">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="canvas">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="caption">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="center">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="cite">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="code">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="col">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="colgroup">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="data">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="datalist">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="dd">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="del">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="details">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="dfn">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="dialog">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="dir">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <group id="div">
+            <group id="-attributes-">
+              <get id="style" default="color:blue;"/>
+            </group>
+            <get id="-class-">org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup</get>
+          </group>
+          <set attribute="dl">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="dt">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="em">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="embed">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="fieldset">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="figcaption">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="figure">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="font">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="footer">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="form">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="frame">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="frameset">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="h1">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="h2">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="h3">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="h4">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="h5">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="h6">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="head">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="header">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="hr">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="html">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="i">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="iframe">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="img">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="input">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="ins">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="kbd">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="label">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="legend">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="li">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="link">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="main">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="map">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="mark">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="meta">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="meter">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="nav">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="noframes">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="noscript">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="object">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="ol">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="optgroup">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="option">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="output">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="p">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="param">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="picture">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="pre">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="progress">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="q">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="rp">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="rt">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="ruby">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="s">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="samp">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="script">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="section">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="select">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="small">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="source">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="span">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="strike">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="strong">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="style">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="sub">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="summary">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="sup">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="svg">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="table">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="tbody">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <group id="td">
+            <get id="-class-">org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup</get>
+          </group>
+          <set attribute="template">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="textarea">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="tfoot">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <group id="th">
+            <group id="-attributes-">
+              <get id="style" default="color:green;text-align:left;"/>
+            </group>
+            <group id="-metadata-">
+              <get id="style.tokenizer" default=";"/>
+            </group>
+            <get id="-class-">org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup</get>
+          </group>
+          <set attribute="thead">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="time">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="title">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <group id="tr">
+            <group id="-attributes-">
+              <get id="style" default="color:brown;"/>
+            </group>
+            <get id="-class-">org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup</get>
+          </group>
+          <set attribute="track">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="tt">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="u">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="ul">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="var">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="video">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+          <set attribute="wbr">
+            org.cuframework.core.CompilationUnits$DOLLAR;ExecutableGroup
+          </set>
+        </group>
+      </group>
+    </group>
+  </headless-executable-group>
+</root>

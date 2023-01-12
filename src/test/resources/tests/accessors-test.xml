@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="accessors-test.xml">
+  <executable-group id="-test-">
+    <using>
+      <get id="var" default="You got me!"/>
+      <get id="varname" default="var"/>
+      <get id="DOLLAR" default="$"/>
+      <get id="intone">$$$int(1)</get>
+      <get id="eval.$().*.null" default="Null $() value"/>
+      <get id="eval.$.*.null" default="Null var value"/>
+      <get id="eval.$$.*.null" default="Null cu value"/>
+      <get id="eval.$$$.*.null" default="Null function value"/>
+      <get id="eval.@.missing-attr.null" default="missing"/>
+      <get id="eval.$xpath().*.null" default="Null xpath value"/>
+      <valueof id="data">
+        <json container="CONTEXT-MAP" name="json-obj"/>
+      </valueof>
+    </using>
+    <finally>
+      <log id="begin-test-msg">
+        <valueof default="Starting accessor tests..."/>
+      </log>
+      <assert id="accessor-assertions-1" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9 and 10 and 11">
+        <condition id="1" expression="\$">
+          <get id="sd">$</get>
+        </condition>
+        <condition id="2" expression="\$">
+          <get id="sd">$:DOLLAR</get>
+        </condition>
+        <condition id="3" expression="\$">
+          <get id="sd">$:DOLLAR;</get>
+        </condition>
+        <condition id="4" expression="\$">
+          <get id="sd">$DOLLAR</get>
+        </condition>
+        <condition id="5" expression="\$">
+          <get id="sd">$DOLLAR;</get>
+        </condition>
+        <condition id="6" expression="java\.lang\.Integer and 4 and Null var value">
+          <get id="sd">$$$typeof($:[];) and $CONTEXT-MAP:[] and $CONTEXT-MAP:[][]</get>
+        </condition>
+        <condition id="7" expression="You got me! and You got me! and You got me!">
+          <get id="sd">$($DOLLAR;var;); and $var and $($DOLLAR$varname;)</get>
+        </condition>
+        <condition id="8" expression="java\.util\.Collections\$UnmodifiableMap">
+          <typeof><get id="sd">$:</get></typeof>
+        </condition>
+        <condition id="9" expression="java\.util\.HashMap">
+          <typeof><get><internal-map/></get></typeof>
+        </condition>
+        <condition id="10" expression="first and second">
+          <get id="sd">$CONTEXT-MAP:1 and $CONTEXT-MAP:2;</get>
+        </condition>
+        <condition id="11" expression="first and second">
+          <get id="sd">$($CONTEXT-MAP:1 and $CONTEXT-MAP:2);</get>
+        </condition>
+      </assert>
+      <assert id="accessor-assertions-2" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8">
+        <condition id="1" expression="Did I catch you\? You got me!">
+          <get id="gd">$(Did I catch you? $DOLLAR;$varname;);</get>
+        </condition>
+        <condition id="2" expression="false">
+          <get id="td">$$$equals($intone, 1)</get>
+        </condition>
+        <condition id="3" expression="true">
+          <get id="td">$$$equals($intone, $$$int(1))</get>
+        </condition>
+        <condition id="4" expression="true">
+          <get id="td">$$$equals($intone, $$$number(1))</get>
+        </condition>
+        <condition id="5" expression="Null \$\(\) value">
+          <get id="gd">$()</get>
+        </condition>
+        <condition id="6" expression="A Null var value">
+          <get id="gd">A $MISSING.X</get>
+        </condition>
+        <condition id="7" expression="Null cu value">
+          <get id="gd">$$MISSING.X</get>
+        </condition>
+        <condition id="8" expression="Null function value">
+          <get id="gd">$$$MISSING()</get>
+        </condition>
+      </assert>
+      <assert id="accessor-assertions-3" expression="1 and 2 and 3 and 4 and 5 and 6">
+        <condition id="1" expression="2 and 0">
+          <get id="sd">$data[] and $data.key2[]</get>
+        </condition>
+        <condition id="2" expression="key\-name">
+          <get id="td">$data.key1.name</get>
+        </condition>
+        <condition id="3" expression="true and 111">
+          <get id="td">$$$equals($data.key1.int-array[], $$$int(3)) and $data.key1.int-array[2]</get>
+        </condition>
+        <condition id="4" expression="true and 3">
+          <get id="td">$$$equals($data.key1.obj.name, obj-name) and $data.key1[]</get>
+        </condition>
+        <condition id="5" expression="4 and second element">
+          <group id="grp">
+            $$$sum($$1[0], $$1[]) and $$2
+            <get id="1">$data.key1.int-array</get>
+            <get id="2">second element</get>
+          </group>
+        </condition>
+        <condition id="6" expression="5 and 5">
+          <group id="grp">
+            $$$multiply($$1.intone, 5) and $$$multiply($$2.intone, $$$int(5))
+            <get id="1">$:</get>
+            <get id="2"><internal-map/></get>
+          </group>
+        </condition>
+      </assert>
+      <assert id="accessor-assertions-4" expression="1 and 2 and 3 and 4 and 5 and 6">
+        <condition id="1" expression="atr and atr and atr and atr">
+          <get id="atr">@id and @id|c and @id|r and @id|;</get>
+        </condition>
+        <condition id="2" expression="\$varname and var and \$varname and \$varname">
+          <get id="$varname">@id and @id|c and @id|r and @id|;</get>
+        </condition>
+        <condition id="3" expression="true">
+          <get id="atr">$$$gte($$$length(@|;), 1)</get>
+        </condition>
+        <condition id="4" expression="@z\|c and @z\|c and @z\|c and @z\|c and @id">
+          <get id="@z|c" z="@id">@id and @id|c and @id|r and @id|x; and @z;</get>
+        </condition>
+        <condition id="5" expression="@z\|c">
+          <get id="@z|c" z="@id|c">@id</get> <!-- This will not result into infinite recursion as the eval expression
+                                                  is not requesting the computed version of the attribute id -->
+        </condition>
+        <condition id="6" expression="missing and null, false, true">
+          <get>@missing-attr and @missing|c, @missing-attr|n, @missing|N</get>
+        </condition>
+        <!-- As a rule of thumb avoid using the computation hints, especially |c and |x as part of attribute value or it
+             will result into infinite recursion if the computed version is requested in the eval expression as well.
+          <condition id="soe1" expression="StackOverflowError">
+            <get id="@id|c">@id|c</get>
+          </condition>
+          <condition id="soe2" expression="StackOverflowError">
+            <get id="@z|c" z="@id|c">@id|c</get>
+          </condition>
+        -->
+      </assert>
+      <assert id="accessor-assertions-5" expression="id and name and get1 and get2 and grp1 and grp2 and grp3 and set and log and loop">
+        <condition id="id" expression="false, true">  <!-- generic attribute 'id' is not marked as native for any cu -->
+          <get>@id|n, @id|N</get>
+        </condition>
+        <condition id="name" expression="true, false">
+          <group>@name|n, @name|N</group>
+        </condition>
+        <condition id="get1" expression="true, true, true, true, true, true, true">
+          <get>@tbt|n, @serializableNodeName|n, @evalExtent|n, @nodeExpressionTokenizer|n, @outputNullValue|n, @evalIfNull|n, @key|n</get>
+        </condition>
+        <condition id="get2" expression="true, true, true, true">
+          <get>@messageFormat|n, @extractionExpression|n, @matcherGroup|n, @pgvif|n</get>
+        </condition>
+        <condition id="grp1" expression="true, true, true, true">
+          <group>@messageFormat|n, @extractionExpression|n, @matcherGroup|n, @pgvif|n</group>
+        </condition>
+        <condition id="grp2" expression="true, true, true, true, true, true, true">
+          <group>@type|n, @tbt|n, @serializableNodeName|n, @evalExtent|n, @nodeExpressionTokenizer|n, @outputNullValue|n, @evalIfNull|n</group>
+        </condition>
+        <condition id="grp3" expression="true, true, true, true">
+          <group>@selfSerializationPolicy|n, @childSerializationPolicy|n, @escapeQuotes|n, @serializationQuotes|n</group>
+        </condition>
+        <condition id="set" expression="true, true, true, true, true">
+          <set>@attribute|n, @in|n, @breakOnFirstValueSet|n, @override|n, @createMapIfMissing|n</set>
+        </condition>
+        <condition id="log" expression="true, true">
+          <log>@level|n, @target|n</log>
+        </condition>
+        <condition id="loop" expression="true">
+          <loop>@jidsvn|n</loop>
+        </condition>
+      </assert>
+      <assert id="accessor-assertions-6" expression="1 and 2 and 3 and 4 and 5 and 6">
+        <condition id="1" expression="java\.util\.Collections\$UnmodifiableMap">
+          <get id="sd">$$$typeof($:)</get>
+        </condition>
+        <condition id="2" expression="java\.util\.HashMap">
+          <select id="1">
+            $$$typeof($imap)
+            <using>
+              <get id="imap">
+                <internal-map/>
+              </get>
+            </using>
+          </select>
+        </condition>
+        <condition id="3" expression="false">
+          <select>
+            $$$isassignablefrom($imap-using-el, $imap-using-valueof)
+            <using>
+              <get id="imap-using-el">$:</get>
+              <get id="imap-using-valueof"><internal-map/></get>
+            </using>
+          </select>
+        </condition>
+        <condition id="4" expression="true and true">
+          <select>
+            $$$instanceof($imap-using-valueof, java.util.Map) and $$$instanceof($imap-using-valueof, java.util.HashMap)
+            <using>
+              <get id="imap-using-valueof"><internal-map/></get>
+            </using>
+          </select>
+        </condition>
+        <condition id="5" expression="true,false,true">
+          <get>
+            $$$instanceof($:,java.util.Map),$$$instanceof($:,java.util.HashMap),$$$instanceof($:,java.util.Collections$DOLLAR;UnmodifiableMap)
+          </get>
+        </condition>
+        <condition id="6" expression="java\.util\.HashMap">
+          <get>
+            $$$typeof($this)
+            <internal-map/>
+          </get>
+        </condition>
+      </assert>
+      <assert id="accessor-assertions-7" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9">
+        <condition id="1" expression="Null xpath value">
+          <get>$xpath()</get>
+        </condition>
+        <condition id="2" expression="false and true and java\.lang\.String and java\.lang\.Integer">
+          <get>$xpath(1 = 2) and $xpath(2 = 2) and $$$typeof($xpath(1)) and $$$typeof($xpath($$$int(1)))</get>
+        </condition>
+        <condition id="3" expression="abcdef">
+          <get>$xpath(concat('a','b','c','d','e','f'))</get>
+        </condition>
+        <condition id="4" expression="1varTD">
+          <get id="td">1$varname;$xpath(translate('@id','abcdefghijklmnopqrstuvwxyz','ABCDEFGHIJKLMNOPQRSTUVWXYZ'))</get>
+        </condition>
+        <condition id="5" expression="CU is Awesome: true">
+          <get>$(CU is Awesome: $xpath(true()))</get>
+        </condition>
+        <condition id="6" expression="20 and 4 and 0">
+          <get id="xpath-math">$xpath(1 + 2 + 3 * 4 + 5) and $xpath(20 div 5) and $xpath(20 mod 5)</get>
+        </condition>
+        <condition id="7" expression="java\.lang\.String and java\.lang\.String">  <!-- XPath evaluation results are returned as String -->
+          <get id="xpath-math">$$$typeof($xpath(1 + 2 + 3 * 4 + 5)) and $$$typeof($xpath(20 div 5))</get>
+        </condition>
+        <condition id="8" expression="This is ok and 3">
+          <get>$xpath('This is ok') and $xpath($intone + 2)</get>
+        </condition>
+        <condition id="9" expression="1 = 2 and concat\('a','b'\)">  <!-- XPath expressions didn't evaluate and got returned as is -->
+          <get failure1="$xpath(1 = 2)" failure2="$xpath(concat('a','b'))">
+            @failure1|c and @failure2|c  <!-- Xpath context isn't applicable for attributes and can generate unexpected
+                                              results. XPath evaluation hence should be avoided with attributes. -->
+          </get>
+        </condition>
+      </assert>
+      <assert id="accessor-assertions-8" expression="1 and 2 and 3 and 4 and 5">
+        <condition id="1" expression="\$">
+          <get key="DOLLAR">
+            EVAL.NONE  <!-- disables expression evaluation -->
+            <internal-map/>
+          </get>
+        </condition>
+        <condition id="2" expression="1 = 2">  <!-- 1 = 2 is returned as is -->
+          <get evalExtent="V">$xpath(1 = 2)</get>  <!-- Xpath evaluation is disabled -->
+        </condition>
+        <condition id="3" expression="abcdef">
+          <get evalExtent="X">$xpath(concat('a','b','c','d','e','f'))</get>  <!-- Xpath evaluation is enabled -->
+        </condition>
+        <condition id="4" expression="var-1">
+          <select evalExtent="N">  <!-- All expression evaluations are disabled -->
+            This expression won't be evaluated and the value returned by the conditional would be the final value.
+            <conditional>$varname;-$intone;</conditional>
+          </select>
+        </condition>
+        <condition id="5" expression="CU is Awesome: 1 true\(\)">  <!-- xpath expression true() is returned as is -->
+          <get evalExtent="DV">$(CU is Awesome: $intone; $xpath(true()))</get>  <!-- Eval is enabled but Xpath eval is disabled -->
+        </condition>
+      </assert>
+      <log id="end-test-msg">
+        <valueof default="Finished accessor tests."/>
+      </log>
+    </finally>
+  </executable-group>
+  <headless-group id="-test-data-">
+    <headless-group id="1">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='1=first;2=second;json-obj={"key1":{"name":"key-name","int-array":[1,11,111],"obj":{"name":"obj-name"}},"key2":[]}'/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_execution-resultmap">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+        <load-properties id="output">
+          <using>
+            <valueof id="stream" default="result=0"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_execution-resultmap">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+  </headless-group>
+</root>

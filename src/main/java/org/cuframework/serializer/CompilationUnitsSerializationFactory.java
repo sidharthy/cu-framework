@@ -35,16 +35,38 @@ package org.cuframework.serializer;
  */
 public final class CompilationUnitsSerializationFactory {
     public static enum SerializerType {
-        JSON,
-        MAP,
-        OBJECT;
+        JSON("json"),
+        MAP("map"),
+        OBJECT("object"),
+        SOURCE("source");
+
+        private String type = "";
+        private SerializerType(String type) {
+            this.type = type;
+        }
+        public String getAsString() {
+            return type;
+        }
+        public static SerializerType fromString(String type) {
+            if (type == null)
+                return null;
+            switch(type.toLowerCase()) {
+                case "json": return JSON;
+                case "map": return MAP;
+                case "object": return OBJECT;
+                case "source": return SOURCE;
+            }
+            return null;
+        }
     };
 
     private CompilationUnitsSerializationFactory() {
     }
 
     public static ICompilationUnitSerializer getGroupSerializer(SerializerType type) {
+        type = type == null? SerializerType.JSON: type;  //default to JSON type if no type specified
         switch(type) {
+            case SOURCE : return new SourceSerializerForGroupCU();
             case MAP :
             case OBJECT : return new ObjectSerializerForGroupCU();
             case JSON :

@@ -39,6 +39,11 @@ import org.cuframework.core.CompilationUnits.ExecutableGroup;
 public class Calculator extends ExecutableGroup implements IExecutable {
     public static final String TAG_NAME = "calculator";
 
+    @Override
+    public String getTagName() {
+        return Calculator.TAG_NAME;
+    }
+
     //the result or outcome of the execution should be set inside requestContext as a map and
     //the name of the map key should be returned as the value of the function.
     @Override
