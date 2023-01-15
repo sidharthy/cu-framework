@@ -142,7 +142,8 @@ public final class CompilationUnitsNamespace {
     //This method can set only 'more' units and not the 'core' units.
     public boolean setCompilationClassForTag(String tagName, String tagClassName) throws ClassNotFoundException, ClassCastException {
         return setCompilationClassForTag(tagName, 
-                                         Class.forName(tagClassName, false, URLClassLoader.newInstance(getClasspath(tagName)))
+                                         Class.forName(tagClassName, false, URLClassLoader.newInstance(getClasspath(tagName),
+                                                                                                       getClass().getClassLoader()))
                                                                                                  .asSubclass(ICompilationUnit.class));
     }
 

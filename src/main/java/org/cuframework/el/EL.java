@@ -501,6 +501,10 @@ public class EL {
                                                                    //funtion call e.g. $$$equals($1,$2) And $$$equals($1,$WHITESPACE;$2)
                 if (exprs.size() > 0) {
                     paramsAsExpressions.add(toSingularExpression(exprs));
+                } else {
+                    //this can only be the case when the param string to be parsed was empty ("").
+                    //we should append a null token in this case or else the param sequence would disturb and results can be unpredictable.
+                    paramsAsExpressions.add(new PlainText(null));
                 }
             }
         }

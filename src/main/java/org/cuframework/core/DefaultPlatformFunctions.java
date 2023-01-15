@@ -872,9 +872,14 @@ final class DefaultPlatformFunctions {
                                            }
                                            delimiter = delimiter == null? "": delimiter;
                                            StringBuilder strBuilder = new StringBuilder();
-                                           for (int i = 1; i < context.length; i++) {
-                                               strBuilder.append(context[i]);
-                                               if (i != context.length - 1) {
+                                           Object[] arrayToJoin = context.length == 2 &&
+                                                                  context[1] != null &&
+                                                                  context[1].getClass().isArray()?
+                                                                         (Object[]) context[1]:
+                                                                         context;
+                                           for (int i = (arrayToJoin == context? 1: 0); i < arrayToJoin.length; i++) {
+                                               strBuilder.append(arrayToJoin[i]);
+                                               if (i != arrayToJoin.length - 1) {
                                                  strBuilder.append(delimiter);
                                                }
                                            }
@@ -926,6 +931,43 @@ final class DefaultPlatformFunctions {
                                                       LocalDateTime.parse(str, DateTimeFormatter.ofPattern(format))
                                                     ):
                                                     null;
+                                       });
+        coreFunctions.put("substring",
+                          (context, compilationRuntimeContext) -> {
+                                           String str = context.length > 0? (String) context[0]: null;
+                                           if (str == null || context.length < 2) {
+                                               return str == null? null: str;
+                                           }
+                                           Object _beginIndex = context[1];
+                                           Object _endIndex = context.length > 2? context[2]: null;
+                                           int beginIndex = -1;
+                                           int endIndex = -1;
+                                           try {
+                                               if (_beginIndex != null) {
+                                                   beginIndex = Integer.parseInt(_beginIndex.toString());
+                                               }
+                                           } catch (NumberFormatException nfe) {
+                                               //invalid input
+                                               return null;
+                                           }
+                                           try {
+                                               if (_endIndex != null) {
+                                                   endIndex = Integer.parseInt(_endIndex.toString());
+                                               }
+                                           } catch (NumberFormatException nfe) {
+                                               //invalid input
+                                               return null;
+                                           }
+                                           return beginIndex == -1 && endIndex == -1?
+                                                      str:
+                                                      (beginIndex >= 0 && beginIndex < str.length() && endIndex == -1)?
+                                                          str.substring(beginIndex):
+                                                          (beginIndex == -1 && endIndex >= 0 && endIndex <= str.length())?
+                                                              str.substring(0, endIndex):
+                                                              (beginIndex >=0 && beginIndex < str.length() &&
+                                                               endIndex >=0 && endIndex <= str.length() && beginIndex <= endIndex)?
+                                                                  str.substring(beginIndex, endIndex):
+                                                                  null;
                                        });
         coreFunctions.put("date",
                           (context, compilationRuntimeContext) -> {
