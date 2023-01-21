@@ -1008,6 +1008,47 @@ final class DefaultPlatformFunctions {
         coreFunctions.put("isnull",
                           (context, compilationRuntimeContext) -> context.length == 0 ||
                                                                   (context.length == 1 && context[0] == null));
+        coreFunctions.put("not",
+                          (context, compilationRuntimeContext) -> context.length == 0 || (context.length == 1 && context[0] == null)?
+                                                                      true:
+                                                                      context[0] instanceof Boolean?
+                                                                          !((Boolean) context[0]):
+                                                                          context[0] instanceof String &&
+                                                                          ("".equals((String) context[0]) ||
+                                                                           "false".equalsIgnoreCase((String) context[0]))?
+                                                                              true:
+                                                                              false);
+        coreFunctions.put("ifelse",  //returns context[1] if condition is satisfied
+                                     //else returns context[2] iff context.length == 3 else returns null
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length < 2) {
+                                               return null;
+                                           }
+                                           boolean satisfiesIf = (context[0] instanceof Boolean && Boolean.valueOf((Boolean) context[0])) ||
+                                                                 (context[0] != null && Boolean.valueOf(context[0].toString().toLowerCase()));
+                                           return satisfiesIf? context[1]: (context.length == 3? context[2]: null);
+                                       });
+        coreFunctions.put("ifelsen",  //returns context[1] if condition is satisfied
+                                      //else returns the first non null value from context[n] where n >= 2
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length < 2) {
+                                               return null;
+                                           }
+                                           boolean satisfiesIf = (context[0] instanceof Boolean && Boolean.valueOf((Boolean) context[0])) ||
+                                                                 (context[0] != null && Boolean.valueOf(context[0].toString().toLowerCase()));
+                                           Object returnValue = null;
+                                           if (satisfiesIf) {
+                                               returnValue = context[1];
+                                           } else if (context.length >= 3) {
+                                               for (int i = 2; i < context.length; i++) {
+                                                   if (context[i] != null) {
+                                                       returnValue = context[i];
+                                                       break;
+                                                   }
+                                               }
+                                           }
+                                           return returnValue;
+                                       });
         coreFunctions.put("isassignablefrom",
                           (context, compilationRuntimeContext) -> context.length == 2 &&
                                                                   context[0] != null && context[1] != null &&

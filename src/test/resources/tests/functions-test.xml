@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root id="functions-test.xml">
+  <executable-group id="-test-">
+    <using>
+      <valueof id="data">
+        <json container="CONTEXT-MAP" name="json-obj"/>
+      </valueof>
+    </using>
+    <finally>
+      <log id="begin-test-msg">
+        <valueof default="Starting function tests..."/>
+      </log>
+      <assert id="functions-assertions-1" expression="1 and 2 and 3 and 4 and 5 and 6">
+        <condition id="1" expression="true, false, false, true">
+          <get id="not">$$$not(), $$$not(null), $$$not(true), $$$not(false)</get>
+        </condition>
+        <condition id="2" expression="false, true, true, false">
+          <get id="not">$$$not($$$true()), $$$not($$$false()), $$$not($$$null()), $$$not("")</get>
+        </condition>
+        <condition id="3" expression="null, T, f, null">
+          <get id="ifelse">$$$ifelse(), $$$ifelse($$$true(), T, F), $$$ifelse($$$false(), t, f), $$$ifelse(x, t)</get>
+        </condition>
+        <condition id="4" expression="null, null, t">
+          <get id="ifelse">$$$ifelse($$$null()), $$$ifelse($$$false(), a, b, c), $$$ifelse(true, t)</get>
+        </condition>
+        <condition id="5" expression="null, T, f, null">
+          <get id="ifelsen">$$$ifelsen(), $$$ifelsen($$$true(), T, F), $$$ifelsen($$$false(), t, f), $$$ifelsen(x, t)</get>
+        </condition>
+        <condition id="6" expression="null, b, X">
+          <get id="ifelsen">$$$ifelsen($$$null()), $$$ifelsen($$$false(), a, b, c), $$$ifelsen($$$false(), true, $$$null(), X)</get>
+        </condition>
+      </assert>
+      <log id="end-test-msg">
+        <valueof default="Finished function tests."/>
+      </log>
+    </finally>
+  </executable-group>
+  <headless-group id="-test-data-">
+    <headless-group id="1">
+      <init>
+        <load-properties id="input">
+          <using>
+            <valueof id="stream" default='1=first;2=second;json-obj={"key1":{"name":"key-name","int-array":[1,11,111],"obj":{"name":"obj-name"}},"key2":[]}'/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-INPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_execution-resultmap">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+        <load-properties id="output">
+          <using>
+            <valueof id="stream" default="result=0"/>
+          </using>
+          <init>
+            <set attribute="1" in="TEST-OUTPUT-MAP" createMapIfMissing="true" override="false">
+              <valueof key="$_execution-resultmap">
+                <internal-map/>
+              </valueof>
+            </set>
+          </init>
+        </load-properties>
+      </init>
+    </headless-group>
+  </headless-group>
+</root>
