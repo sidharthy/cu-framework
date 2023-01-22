@@ -68,10 +68,12 @@ public class CompilationRuntimeContext {
         return internalContextMap;
     }
 
+    @Deprecated
     protected void setAbortIfNotSatisfy(boolean flag) {
         this.abortIfNotSatisfy = flag;
     }
 
+    @Deprecated
     protected boolean isAbortIfNotSatisfy() {
         return abortIfNotSatisfy;
     }

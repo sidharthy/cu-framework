@@ -34,6 +34,7 @@ package org.cuframework.core;
  *
  * @author Sidharth Yadav
  */
+@Deprecated
 class NoConditionsSatisfiedException extends RuntimeException {
     private String parentCuId = null;
 

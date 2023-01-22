@@ -38,6 +38,7 @@ import org.cuframework.core.CompilationUnits.Group.GroupType;
 import org.cuframework.core.CompilationUnits.Group.SerializationPolicy;
 import org.cuframework.core.CompilationUnits.ICompilationUnit;
 import org.cuframework.core.CompilationUnits.IEvaluable;
+import org.cuframework.core.CompilationUnits.ISatisfiable;
 import org.cuframework.core.CompilationUnits.Set;
 
 /**
@@ -99,6 +100,9 @@ class SourceSerializerForGroupCU implements ICompilationUnitSerializer {
         for (int i = 0; i < children.length; i++) {
             ICompilationUnit child = children[i];
             boolean hasSetThisValue = false;
+            if (child instanceof ISatisfiable && !((ISatisfiable) child).satisfies(compilationRuntimeContext)) {
+                continue;  //the on condition didn't satisfy and serialization shouldn't be attempted for this cu.
+            }
             if (child instanceof Set) {
                 Set setToSerialize = (Set) child;
                 String attributeToSet = setToSerialize.getAttributeToSet(compilationRuntimeContext);  //attempting to get the computed value of attribute
@@ -187,6 +191,14 @@ class SourceSerializerForGroupCU implements ICompilationUnitSerializer {
             subgroupToSerialize.setSelfSerializationPolicyRuntime(subgroupToSerialize.getSelfSerializationPolicy());
             subgroupToSerialize.setChildSerializationPolicyRuntime(subgroupToSerialize.getChildSerializationPolicy());
         }
+
+        if (groupAsSourceTmp == null &&  //this can heppen, e.g. in cases like when the selfSerializationPolicy
+                                         //and childSerializationPolicy of the group were both set
+                                         //to 'value' and the child evaluated to a null value.
+            !subgroupToSerialize.doOutputNullValue()) {
+            groupAsSourceTmp = "";  //let's assign it an empty string so effectively nothing gets written to the strBuilder.
+        }
+
         strBuilder.append(groupAsSourceTmp);
         return !"".equals(groupAsSourceTmp);
     }

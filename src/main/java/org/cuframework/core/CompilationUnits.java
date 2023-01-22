@@ -615,6 +615,12 @@ public final class CompilationUnits {
         boolean isEmpty();
     }
 
+    //Classes can implement this interface if they accept 'on' cu as one of their child and generically want to get the
+    //satisfaction criteria considered at various steps viz during serialization, inside set/using/log cu blocks etc.
+    public interface ISatisfiable extends ICompilationUnit {
+        boolean satisfies(CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException;
+    }
+
     public interface IExtensible<T extends ICompilationUnit> extends ICompilationUnit {
         List<Extends> getExtensions();
         boolean hasExtends();
@@ -1295,12 +1301,7 @@ public final class CompilationUnits {
         @Override
         protected Object doGetValue(CompilationRuntimeContext compilationRuntimeContext)
                                                                     throws XPathExpressionException {
-            Object value = null;
-            if (evaluable != null) {
-                Object evaluableValueTmp = evaluable.getValue(compilationRuntimeContext);
-                value = "".equals(evaluableValueTmp) ? null : evaluableValueTmp;
-            }
-            return value;
+            return evaluable != null ? evaluable.getValue(compilationRuntimeContext) : null;
         }
 
         @Override
@@ -1387,7 +1388,7 @@ public final class CompilationUnits {
         }
     }
 
-    public static class ValueOf extends EvaluableCompilationUnit implements IEvaluable {
+    public static class ValueOf extends EvaluableCompilationUnit implements IEvaluable, ISatisfiable {
         public static final String TAG_NAME = "valueof";
 
         private static final String ATTRIBUTE_KEY = "key";
@@ -1480,19 +1481,19 @@ public final class CompilationUnits {
         }
 
         @Override
+        public boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
+                                                                     throws XPathExpressionException {
+            return on == null || on.satisfies(compilationRuntimeContext);
+        }
+
+        @Override
         protected Object doGetValue(CompilationRuntimeContext compilationRuntimeContext)
                                                                     throws XPathExpressionException {
-            boolean abortIfNotSatisfy = compilationRuntimeContext.isAbortIfNotSatisfy();
             //MapOfMaps mapOfMaps = compilationRuntimeContext.getExternalContext();
             Object value = null;
-            boolean isMapsListEmpty = maps.isEmpty();
-            boolean satisfiesAtLeastOne = isMapsListEmpty;  //if no maps are defined in which to lookup (say in case
-                                                           //when we are interested in just setting a default value
-                                                           //then 'satisfiesAtLeastOne' should be set to true.
             String key = getKey(compilationRuntimeContext);
             for (Map map : maps) {
                 if (map.satisfiesOn(compilationRuntimeContext)) {
-                    satisfiesAtLeastOne = true;
                     /****** Commented out this block because now the responsibility
                      ****** of returning the value for a key has been moved to the Map cu impl class. ***
                     java.util.Map<String, String> mapTmp = mapOfMaps == null ?
@@ -1510,17 +1511,6 @@ public final class CompilationUnits {
                     }
                 }
             }
-
-            //if there are no lookup maps available but if there is an 'on' condition available then we
-            // need to set the satisfaction criteria to the one returned by the 'on' condition.
-            satisfiesAtLeastOne = isMapsListEmpty ?
-                                  (on != null ? on.satisfies(compilationRuntimeContext) : satisfiesAtLeastOne) :
-                                  satisfiesAtLeastOne;
-
-            if (abortIfNotSatisfy && !satisfiesAtLeastOne) {
-                throw new NoConditionsSatisfiedException(getIdOrElse(),  //let's just use the uncomputed version of getIdOrElse
-                                                         "No available conditions satisfied.");
-            }
             return value;
         }
 
@@ -1531,7 +1521,7 @@ public final class CompilationUnits {
     }
 
     //returns the java class type of value object returned by the enclosed evaluable child cu.
-    public static class TypeOf extends EvaluableCompilationUnit implements IEvaluable {
+    public static class TypeOf extends EvaluableCompilationUnit implements IEvaluable, ISatisfiable {
         public static final String TAG_NAME = "typeof";
 
         private static final String ATTRIBUTE_DEFAULT_VALUE = "default";
@@ -1598,7 +1588,7 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
+        public boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
                                                                      throws XPathExpressionException {
             return on == null || on.satisfies(compilationRuntimeContext);
         }
@@ -2009,14 +1999,6 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected java.util.Set<String> doInitDefaultConfigAttributes(Node n) throws XPathExpressionException {
-            String attribute = ATTRIBUTE_EVAL_EXTENT;
-            setAttribute(attribute, "DV", false);  //default the eval scope of TextBlock cu to dollared and variable evaluation
-
-            return super.doInitDefaultConfigAttributes(n);  //attempt to set the default config attributes
-        }
-
-        @Override
         protected void doCompileAttributes(Node n, java.util.Set<String> mergeableAttributes) throws XPathExpressionException {
             //-----------------------------------------------------------------------------------------
             String[] attributesToInheritFromParentNode = {ATTRIBUTE_MESSAGE_FORMAT, ATTRIBUTE_EXTRACTION_EXPRESSION,
@@ -2073,7 +2055,7 @@ public final class CompilationUnits {
         }
     }
 
-    public static class CuText extends EvaluableCompilationUnit implements IEvaluable, IEmptiable {
+    public static class CuText extends EvaluableCompilationUnit implements IEvaluable, IEmptiable, ISatisfiable {
         public static final String TAG_NAME = "cu-text";
 
         private static final String ATTRIBUTE_ON_TREATMENT = "on";  //valid values: ser|exec|serexec.
@@ -2110,7 +2092,7 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
+        public boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
                                                                      throws XPathExpressionException {
             return on == null || on.satisfies(compilationRuntimeContext);
         }
@@ -2210,7 +2192,7 @@ public final class CompilationUnits {
         }
     }
 
-    public static class Group extends ExtensibleCompilationUnit<Group> {
+    public static class Group extends ExtensibleCompilationUnit<Group> implements ISatisfiable {
         public static final String TAG_NAME = "group";
 
         public static enum GroupType {
@@ -2993,7 +2975,7 @@ public final class CompilationUnits {
         /************************************************************************************/
         /************************************************************************************/
         @Override
-        protected boolean satisfies(CompilationRuntimeContext compilationRuntimeContext) 
+        public boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
                                                                      throws XPathExpressionException {
             return on == null || on.satisfies(compilationRuntimeContext);
         }
@@ -3387,26 +3369,13 @@ public final class CompilationUnits {
 
             Object value = null;
             for (Conditional conditional : conditionals) {
-                value = conditional.matches(compilationRuntimeContext) ?
-                                            conditional.getValue(compilationRuntimeContext) : null;
-                if (value != null) {
+                boolean matches = conditional.matches(compilationRuntimeContext);
+                if (matches) {
+                    value = conditional.getValue(compilationRuntimeContext);
                     break;
                 }
             }
 
-            //Abort support during internal processing
-            if (value == null && compilationRuntimeContext.isAbortIfNotSatisfy()) {
-                //if the value is null then we would just assume that no condition has satisfied even though
-                //it might have so happened that some condition was satisfied but the value returned by it
-                //was null. This assumption should not be a problem as the intention of this Select CU is to
-                //attempt to return a non null value after analyzing all available conditionals. If, however,
-                //the exceptional abort needs to be done strictly iff the matches criterion of all conditionals
-                //actually failed then introduce a new boolean flag and set its value to the OR of all
-                //conditionals that were evaluated before breaking out of the above loop and then use the value
-                //of that boolean flag to decide whether to enter this block or not.
-                throw new NoConditionsSatisfiedException(getIdOrElse(),  //let's just use the uncomputed version of getIdOrElse
-                                                         "No available conditions satisfied.");
-            }
             return value;
         }
     }
@@ -3578,17 +3547,11 @@ public final class CompilationUnits {
                                                                                     throws XPathExpressionException {
             java.util.Map<String, Object> mapTmp = new HashMap<String, Object>();
             for (IEvaluable evaluable: evaluables) {
-                try {
-                    compilationRuntimeContext.setAbortIfNotSatisfy(true);  //enable the abort flag
-                    Object value = evaluable.getValue(compilationRuntimeContext);
-                    mapTmp.put(evaluable.getId(), value);
-                } catch (NoConditionsSatisfiedException/*RuntimeException*/ re) {
-                    //this was just for indication that the value was not set because the 'on' condition was
-                    //not satisfied even when we managed to find a value of the key inside one of the maps.
-                    //no specific action needed.
-                } finally {
-                    compilationRuntimeContext.setAbortIfNotSatisfy(false);  //reset back the abort flag to false
+                if (evaluable instanceof ISatisfiable &&
+                    !((ISatisfiable) evaluable).satisfies(compilationRuntimeContext)) {
+                    continue;  //the on condition didn't satisfy and this cu should be skipped.
                 }
+                mapTmp.put(evaluable.getId(), evaluable.getValue(compilationRuntimeContext));
             }
             return mapTmp;
         }
@@ -3671,7 +3634,7 @@ public final class CompilationUnits {
         /**************************************************************************************/
     }
 
-    public static class Set extends ExtensibleCompilationUnit<Set> implements IExecutable {
+    public static class Set extends ExtensibleCompilationUnit<Set> implements IExecutable, ISatisfiable {
         public static final String TAG_NAME = "set";
 
         private static final String ATTRIBUTE_ATTRIBUTE = "attribute";
@@ -3688,7 +3651,7 @@ public final class CompilationUnits {
         /* private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(
                                                                        new String[]{ValueOf.TAG_NAME, Get.TAG_NAME, Select.TAG_NAME, On.TAG_NAME}); */
 
-        private List<IEvaluable/*EvaluableCompilationUnit*/> evaluables = null;
+        private List<IEvaluable> evaluables = null;
         private On on = null;  //'on' condition, if present, must be satisfied in order for this Set CU to execute.
 
         private boolean breakOnFirstValueSet = true;  //using a separate boolean field (and not using the
@@ -3767,7 +3730,7 @@ public final class CompilationUnits {
 
         @Override
         protected void doCompileChildren(Node n) throws XPathExpressionException {
-            evaluables = new LinkedList<IEvaluable/*EvaluableCompilationUnit*/>(); // since mostly we would be operating
+            evaluables = new LinkedList<IEvaluable>(); // since mostly we would be operating
                                                   // sequentially so
                                                   // LinkedList would be an optimal
                                                   // choice
@@ -3779,10 +3742,7 @@ public final class CompilationUnits {
         protected void doAddCompiledUnit(String tagName, ICompilationUnit cu) {
             super.doAddCompiledUnit(tagName, cu);
 
-            //if ((cu instanceof ValueOf) || (cu instanceof Get) || (cu instanceof Select)) {
-            //if (cu instanceof EvaluableCompilationUnit) {
             if (cu instanceof IEvaluable) {
-                //evaluables.add((EvaluableCompilationUnit) cu);
                 evaluables.add((IEvaluable) cu);
             } else if ((cu instanceof On) && (on == null)) {
                 //we need just one 'on' cu and in case of many defined, let's just retain the first instance that we got.
@@ -3809,7 +3769,7 @@ public final class CompilationUnits {
                 return cu;
             }
             if (evaluables != null) {
-                for (IEvaluable/*EvaluableCompilationUnit*/ evaluable : evaluables) {
+                for (IEvaluable evaluable : evaluables) {
                     if (idOrElseOfChild.equals(evaluable.getIdOrElse())) {
                         return evaluable;
                     }
@@ -3828,8 +3788,6 @@ public final class CompilationUnits {
             if (superChildrenByType != null) {
                 return (T[]) superChildrenByType;
             }
-            /*EvaluableCompilationUnit[] evaluablesArray = areMatchingTypes(EvaluableCompilationUnit.class, type) ?
-                                             getElementsFromList(evaluables, new EvaluableCompilationUnit[0]) : null;*/
             IEvaluable[] evaluablesArray = areMatchingTypes(IEvaluable.class, type) ?
                                              getElementsFromList(evaluables, new IEvaluable[0]) : null;
             if (evaluablesArray != null) {
@@ -3852,7 +3810,7 @@ public final class CompilationUnits {
         }
 
         @Override
-        protected boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
+        public boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
                                                                      throws XPathExpressionException {
             return on == null || on.satisfies(compilationRuntimeContext);
         }
@@ -3916,7 +3874,8 @@ public final class CompilationUnits {
                 if (attribute != null) {
                     map.put(attribute, value/* == null ? null : value.toString()*/);  //Using the raw value instead of toString
                 } else if (value instanceof java.util.Map) {
-                    for (Entry<String, Object> entry : ((java.util.Map<String, Object>) value).entrySet()) {  //if the map isn't assignable to Map<String, Object> then an exception would be thrown here.
+                    for (Entry<String, Object> entry : ((java.util.Map<String, Object>) value).entrySet()) {  //if the map isn't assignable to Map<String, Object>
+                                                                                                              //then an exception would be thrown here.
                         setValueInMap(newMapCreated, nameOfMap, map, entry.getKey(), entry.getValue());  //set recursively all map values
                     }
                 } else {
@@ -3939,29 +3898,24 @@ public final class CompilationUnits {
             */
 
             Object value = null;
-            for (IEvaluable/*EvaluableCompilationUnit*/ evaluable : evaluables) {
-                try {
-                    compilationRuntimeContext.setAbortIfNotSatisfy(true);  //enable the abort flag
-                    value = evaluable.getValue(compilationRuntimeContext);
-                    if (breakOnFirstValueSet) {
-                        break;
-                    }
-
-                    //we are likely interested in returning a transformed value based on the values of one
-                    //or more valueof CUs. Let's pass such values using the internal context to the transformation
-                    //function.
-                    if (compilationRuntimeContext.getInternalContext() == null) {
-                        compilationRuntimeContext.setInternalContext(new HashMap<String, Object>());
-                    }
-                    compilationRuntimeContext.getInternalContext().put(evaluable.getId(), value);
-
-                } catch (NoConditionsSatisfiedException/*RuntimeException*/ re) {
-                    //this was just for indication that the value was not set because the 'on' condition was
-                    //not satisfied even when we managed to find a value of the key inside one of the maps.
-                    //no specific action needed.
-                } finally {
-                    compilationRuntimeContext.setAbortIfNotSatisfy(false);  //reset back the abort flag to false
+            for (IEvaluable evaluable : evaluables) {
+                if (evaluable instanceof ISatisfiable &&
+                    !((ISatisfiable) evaluable).satisfies(compilationRuntimeContext)) {
+                    continue;  //the on condition didn't satisfy and this cu should be skipped.
                 }
+
+                value = evaluable.getValue(compilationRuntimeContext);
+                if (breakOnFirstValueSet) {
+                    break;
+                }
+
+                //we are likely interested in returning a transformed value based on the values of one
+                //or more valueof CUs. Let's pass such values using the internal context to the transformation
+                //function.
+                if (compilationRuntimeContext.getInternalContext() == null) {
+                    compilationRuntimeContext.setInternalContext(new HashMap<String, Object>());
+                }
+                compilationRuntimeContext.getInternalContext().put(evaluable.getId(), value);
             }
             return value;
         }
@@ -5155,21 +5109,15 @@ public final class CompilationUnits {
 
             String logIdOrElse = getIdOrElse();
             for (IEvaluable evaluable : evaluables) {
-                try {
-                    compilationRuntimeContext.setAbortIfNotSatisfy(true);  //enable the abort flag
-                    Object value = evaluable.getValue(compilationRuntimeContext);
-                    logger.logp(level, loggingContext,
-                               /*("[" + (logIdOrElse != null? logIdOrElse + "#": "") + evaluable.getIdOrElse() + "]"),*/
-                               (logIdOrElse + "#" + evaluable.getIdOrElse()),
-                               (value != null? value.toString(): null));
-
-                } catch (NoConditionsSatisfiedException/*RuntimeException*/ re) {
-                    //this was just for indication that the value was not set because the 'on' condition was
-                    //not satisfied even when we managed to find a value of the key inside one of the maps.
-                    //no specific action needed.
-                } finally {
-                    compilationRuntimeContext.setAbortIfNotSatisfy(false);  //reset back the abort flag to false
+                if (evaluable instanceof ISatisfiable &&
+                    !((ISatisfiable) evaluable).satisfies(compilationRuntimeContext)) {
+                    continue;  //the on condition didn't satisfy and this cu should be skipped.
                 }
+                Object value = evaluable.getValue(compilationRuntimeContext);
+                logger.logp(level, loggingContext,
+                           /*("[" + (logIdOrElse != null? logIdOrElse + "#": "") + evaluable.getIdOrElse() + "]"),*/
+                           (logIdOrElse + "#" + evaluable.getIdOrElse()),
+                           (value != null? value.toString(): null));
             }
         }
     }

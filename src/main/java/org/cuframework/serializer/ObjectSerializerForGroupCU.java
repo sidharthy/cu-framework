@@ -43,6 +43,7 @@ import org.cuframework.core.CompilationUnits.Group.GroupType;
 import org.cuframework.core.CompilationUnits.Group.SerializationPolicy;
 import org.cuframework.core.CompilationUnits.ICompilationUnit;
 import org.cuframework.core.CompilationUnits.IEvaluable;
+import org.cuframework.core.CompilationUnits.ISatisfiable;
 import org.cuframework.core.CompilationUnits.Set;
 
 /**
@@ -119,6 +120,9 @@ class ObjectSerializerForGroupCU implements ICompilationUnitSerializer {
         Object collection = isGroupTypeList ? new ArrayList<Object>() : new HashMap<String , Object>();
         for (int i = 0; i < children.length; i++) {
             ICompilationUnit child = children[i];
+            if (child instanceof ISatisfiable && !((ISatisfiable) child).satisfies(compilationRuntimeContext)) {
+                continue;  //the on condition didn't satisfy and serialization shouldn't be attempted for this cu.
+            }
             if (child instanceof Set) {
                 Set setToSerialize = (Set) child;
                 String attributeToSet = setToSerialize.getAttributeToSet(compilationRuntimeContext);  //attempting to get the computed value of attribute
@@ -225,7 +229,7 @@ class ObjectSerializerForGroupCU implements ICompilationUnitSerializer {
             subgroupToSerialize.setChildSerializationPolicyRuntime(subgroupToSerialize.getChildSerializationPolicy());
         }
 
-        if (groupAsCollectionTmp == null) {
+        if (groupAsCollectionTmp == null && !subgroupToSerialize.doOutputNullValue()) {
             return;
         }
 
