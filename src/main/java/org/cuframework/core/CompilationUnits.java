@@ -187,6 +187,19 @@ public final class CompilationUnits {
         return assignable;
     }
 
+    public static Object getValue(IEvaluable evaluable,
+                                  CompilationRuntimeContext compilationRuntimeContext)
+                                                                   throws XPathExpressionException {
+        Object value = null;
+        if (evaluable instanceof Group) {
+            value = ((Group) evaluable).doBuild(compilationRuntimeContext);  //calling doBuild instead of build to avoid passing a serializer type
+                                                                             //and just use the one that is available through the runtime context.
+        } else if (evaluable != null) {
+            value = evaluable.getValue(compilationRuntimeContext);
+        }
+        return value;
+    }
+
     public static XPath getXPath() {
         return XPathFactory.newInstance().newXPath();
     }
@@ -1301,7 +1314,7 @@ public final class CompilationUnits {
         @Override
         protected Object doGetValue(CompilationRuntimeContext compilationRuntimeContext)
                                                                     throws XPathExpressionException {
-            return evaluable != null ? evaluable.getValue(compilationRuntimeContext) : null;
+            return evaluable != null ? CompilationUnits.getValue(evaluable, compilationRuntimeContext) : null;
         }
 
         @Override
@@ -1380,7 +1393,7 @@ public final class CompilationUnits {
                 return true; // no matcher expression provided. Let's just
                              // return true.
             }
-            Object evaluableValueTmp = evaluable.getValue(compilationRuntimeContext);
+            Object evaluableValueTmp = CompilationUnits.getValue(evaluable, compilationRuntimeContext);
             //evaluableValueTmp = "".equals(evaluableValueTmp) ? null : evaluableValueTmp;  //commented out: 10th Mar 20.
                                                                                             //To check for empty string use the regex ^()$
                                                                                             //To check for any string (including empty string) use the regex ^(.*)$
@@ -1598,7 +1611,7 @@ public final class CompilationUnits {
                                                                     throws XPathExpressionException {
             Object value = null;
             if (evaluable != null) {
-                value = evaluable.getValue(compilationRuntimeContext);
+                value = CompilationUnits.getValue(evaluable, compilationRuntimeContext);
             }
             return value != null? value.getClass().getName(): value;
         }
@@ -3018,7 +3031,7 @@ public final class CompilationUnits {
             return quotationMarks != null? quotationMarks: DEFAULT_SERIALIZATION_QUOTATION_MARKS;
         }
 
-        public Object build(CompilationRuntimeContext compilationRuntimeContext,
+        public final Object build(CompilationRuntimeContext compilationRuntimeContext,
                                     String returnType) throws XPathExpressionException {
             java.util.Map<String, Object> internalContext = compilationRuntimeContext.getInternalContext();
             if (internalContext == null) {
@@ -3551,7 +3564,7 @@ public final class CompilationUnits {
                     !((ISatisfiable) evaluable).satisfies(compilationRuntimeContext)) {
                     continue;  //the on condition didn't satisfy and this cu should be skipped.
                 }
-                mapTmp.put(evaluable.getId(), evaluable.getValue(compilationRuntimeContext));
+                mapTmp.put(evaluable.getId(), CompilationUnits.getValue(evaluable, compilationRuntimeContext));
             }
             return mapTmp;
         }
@@ -3904,7 +3917,7 @@ public final class CompilationUnits {
                     continue;  //the on condition didn't satisfy and this cu should be skipped.
                 }
 
-                value = evaluable.getValue(compilationRuntimeContext);
+                value = CompilationUnits.getValue(evaluable, compilationRuntimeContext);
                 if (breakOnFirstValueSet) {
                     break;
                 }
@@ -4331,6 +4344,14 @@ public final class CompilationUnits {
     public static class Loop extends HeadlessExecutableGroup implements IExecutable {
         public static final String TAG_NAME = "loop";
 
+        private static final String LOOP_INPUT_PARAM_ITERABLE = "iterable";
+        private static final String LOOP_INPUT_PARAM_START = "start";
+        private static final String LOOP_INPUT_PARAM_END = "end";
+        private static final String LOOP_INPUT_PARAM_TIMES = "times";
+        private static final String LOOP_INPUT_PARAM_ITR_COMBINATOR = "itr-combinator";
+        private static final String LOOP_INPUT_PARAM_ITR_JOINER = "itr-joiner";
+
+        private static String LOOP_STATE_VARIABLE_ITERABLE_SIZE = "iterable-size";
         private static String LOOP_STATE_VARIABLE_START_INDEX = "start-index";
         private static String LOOP_STATE_VARIABLE_END_INDEX = "end-index";
         private static String LOOP_STATE_VARIABLE_INDEX = "index";
@@ -4493,6 +4514,35 @@ public final class CompilationUnits {
                 //processor CU we would still be able to restore back to the original context state cleanly.
                 java.util.Map<String, Object> savedInternalContextCpy = new HashMap<String, Object>();
                 savedInternalContextCpy.putAll(savedInternalContext);
+
+                //clear the variables from internal map cpy that might represent the loop input/state variables so there is no
+                //side effect in this loop due to it being contained in some outer loop or because of some value defined in
+                //the internal map against a key bearing the same name as one of the loop variables. If there is a case of
+                //genuinely accessing such variable values then pass them in loop using some other variable names.
+                String[] loopInternalVariables = {LOOP_INPUT_PARAM_ITERABLE, LOOP_INPUT_PARAM_START,
+                                                  LOOP_INPUT_PARAM_END, LOOP_INPUT_PARAM_TIMES,
+                                                  //deliberating not clearing LOOP_INPUT_PARAM_ITR_COMBINATOR
+                                                  //and LOOP_INPUT_PARAM_ITR_JOINER here as inheriting them from
+                                                  //outer loop, if defined, may actually be convenient.
+                                                  //In rare cases these could go unnoticed to cause side effect.
+                                                  getStateVariable(LOOP_STATE_VARIABLE_ITERABLE_SIZE, savedInternalContextCpy),
+                                                  getStateVariable(LOOP_STATE_VARIABLE_START_INDEX, savedInternalContextCpy),
+                                                  getStateVariable(LOOP_STATE_VARIABLE_END_INDEX, savedInternalContextCpy),
+                                                  getStateVariable(LOOP_STATE_VARIABLE_INDEX, savedInternalContextCpy),
+                                                  getStateVariable(LOOP_STATE_VARIABLE_NUM_TIMES, savedInternalContextCpy),
+                                                  getStateVariable(LOOP_STATE_VARIABLE_ITEM_KEY, savedInternalContextCpy),
+                                                  getStateVariable(LOOP_STATE_VARIABLE_ITEM_VALUE, savedInternalContextCpy),
+                                                  getStateVariable(LOOP_STATE_VARIABLE_LAST_ITR_VALUE, savedInternalContextCpy),
+                                                  getStateVariable(LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR, savedInternalContextCpy),
+                                                  LOOP_STATE_VARIABLE_ITERABLE_SIZE, LOOP_STATE_VARIABLE_START_INDEX,
+                                                  LOOP_STATE_VARIABLE_END_INDEX, LOOP_STATE_VARIABLE_INDEX,
+                                                  LOOP_STATE_VARIABLE_NUM_TIMES, LOOP_STATE_VARIABLE_ITEM_KEY,
+                                                  LOOP_STATE_VARIABLE_ITEM_VALUE, LOOP_STATE_VARIABLE_LAST_ITR_VALUE,
+                                                  LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR};
+                for (String key : loopInternalVariables) {
+                    savedInternalContextCpy.remove(key);
+                }
+
                 compilationRuntimeContext.setInternalContext(savedInternalContextCpy);  //savedInternalContext = savedInternalContextCpy;  //refer comment below:
                                                                                         //Updated the reference of internal context map inside compilationRuntimeContext
                                                                                         //for this getValue request as opposed to the previous scheme of using the same reference of
@@ -4520,7 +4570,7 @@ public final class CompilationUnits {
                     return _noValue();  //"";  //since it's a group it makes sense to return a zero length string rather than null
                 }
 
-                Object iterable = requestContext.get("iterable");
+                Object iterable = requestContext.get(LOOP_INPUT_PARAM_ITERABLE);
                 //String iterableType = (String) requestContext.get("iterable-type");  //iterable might be string representation
                                                                                      //of object like json, properties etc.
                 Object value = "";
@@ -4528,7 +4578,7 @@ public final class CompilationUnits {
 
                 //internal context variables that should be made available inside finally block.
                 //Further, any variables defined here should make sense outside the loop's iteration scope.
-                final String ITERABLE_SIZE = getStateVariable("iterable-size", internalCtx);
+                final String ITERABLE_SIZE = getStateVariable(LOOP_STATE_VARIABLE_ITERABLE_SIZE, internalCtx);
                 try {
                     if (iterable == null) {
                         value = loopTimes(internalCtx, compilationRuntimeContext);
@@ -4575,9 +4625,9 @@ public final class CompilationUnits {
                                  CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException {
             java.util.Map<String, Object> requestContext = internalCtx;
 
-            Object startIndexAsObject = requestContext.get("start");
-            Object endIndexAsObject = requestContext.get("end");
-            Object numTimesAsObject = requestContext.get("times");
+            Object startIndexAsObject = requestContext.get(LOOP_INPUT_PARAM_START);
+            Object endIndexAsObject = requestContext.get(LOOP_INPUT_PARAM_END);
+            Object numTimesAsObject = requestContext.get(LOOP_INPUT_PARAM_TIMES);
 
             final String START_INDEX = getStateVariable(LOOP_STATE_VARIABLE_START_INDEX, internalCtx);
             final String END_INDEX = getStateVariable(LOOP_STATE_VARIABLE_END_INDEX, internalCtx);
@@ -4608,6 +4658,16 @@ public final class CompilationUnits {
                 internalCtx.put(END_INDEX, endIndex);
                 internalCtx.put(NUM_TIMES, numTimes);
                 endlessLoop = false;
+            }
+
+            //Choosing to let the loop runs atleast once even in case there are no loop input params provided.
+            //That would give loop body a chance to run atleast once and seems to be a more natural choice than
+            //not running it at all.
+            if (startIndexAsObject == null && endIndexAsObject == null && numTimesAsObject == null) {
+                numTimes = 1;
+                endIndex = startIndex + numTimes;
+                internalCtx.put(END_INDEX, endIndex);
+                internalCtx.put(NUM_TIMES, numTimes);
             }
 
             boolean decrement = false;
@@ -4798,7 +4858,7 @@ public final class CompilationUnits {
         //providing this mechanism to disable combining of iteration results. This approach would be
         //eventually be replaced with option to define a custom combinator when the 'Ref' cu gets introduced.
         private boolean isIterationCombinatorDisabled(java.util.Map<String, Object> internalCtx) {
-            String ITR_COMBINATOR = "itr-combinator";
+            String ITR_COMBINATOR = LOOP_INPUT_PARAM_ITR_COMBINATOR;
             boolean combinatorKeyExists = internalCtx.containsKey(ITR_COMBINATOR);
             Object combinator = internalCtx.get(ITR_COMBINATOR);
             return (combinatorKeyExists && (combinator == null || "disabled".equalsIgnoreCase(combinator.toString())));
@@ -4806,7 +4866,7 @@ public final class CompilationUnits {
 
         //returns joiner to be used for iteration results
         private String joiner(java.util.Map<String, Object> internalCtx) {
-            Object joiner = internalCtx.get("itr-joiner");
+            Object joiner = internalCtx.get(LOOP_INPUT_PARAM_ITR_JOINER);
             return joiner != null? joiner.toString(): ",";  //in case of missing joiner, comma will be used as the default joiner.
         }
 
@@ -5113,7 +5173,7 @@ public final class CompilationUnits {
                     !((ISatisfiable) evaluable).satisfies(compilationRuntimeContext)) {
                     continue;  //the on condition didn't satisfy and this cu should be skipped.
                 }
-                Object value = evaluable.getValue(compilationRuntimeContext);
+                Object value = CompilationUnits.getValue(evaluable, compilationRuntimeContext);
                 logger.logp(level, loggingContext,
                            /*("[" + (logIdOrElse != null? logIdOrElse + "#": "") + evaluable.getIdOrElse() + "]"),*/
                            (logIdOrElse + "#" + evaluable.getIdOrElse()),
