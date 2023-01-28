@@ -7,6 +7,7 @@
       <get id="DOLLAR" default="$"/>
       <get id="intone">$$$int(1)</get>
       <get id="eval.$().*.null" default="Null $() value"/>
+      <get id="eval.$.this.null"/>
       <get id="eval.$.*.null" default="Null var value"/>
       <get id="eval.$$.*.null" default="Null cu value"/>
       <get id="eval.$$$.*.null" default="Null function value"/>
@@ -139,7 +140,7 @@
           </condition>
         -->
       </assert>
-      <assert id="accessor-assertions-5" expression="id and name and get1 and get2 and grp1 and grp2 and grp3 and set and log and loop">
+      <assert id="accessor-assertions-5" expression="id and name and get1 and get2 and grp1 and grp2 and grp3 and set and log and loop and loop2">
         <condition id="id" expression="false, true">  <!-- generic attribute 'id' is not marked as native for any cu -->
           <get>@id|n, @id|N</get>
         </condition>
@@ -168,7 +169,19 @@
           <log>@level|n, @target|n</log>
         </condition>
         <condition id="loop" expression="true">
-          <loop>@jidsvn|n</loop>
+          <set>
+            $$$isnull($this)
+            <loop>@jidsvn|n</loop> <!-- since the loop doesn't define any input variables - iterable, start, end, times
+                                        it's body (and hence the EL) would not be executed and simply null would be retuned -->
+          </set>
+        </condition>
+        <condition id="loop2" expression="true true">
+          <loop>
+            @jidsvn|n @clivas|n
+            <using>
+              <get id="times" default="1"/>
+            </using>
+          </loop>
         </condition>
       </assert>
       <assert id="accessor-assertions-6" expression="1 and 2 and 3 and 4 and 5 and 6">

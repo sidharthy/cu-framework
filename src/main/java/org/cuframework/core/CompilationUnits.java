@@ -4363,7 +4363,9 @@ public final class CompilationUnits {
 
         private static final String ATTRIBUTE_JIDSVN = "jidsvn"; //joinIdWithStateVariableNames.
                                                                  //Any value, if set, other than true would indicate false.
-        private static final String[] ATTRIBUTES = {ATTRIBUTE_JIDSVN};
+        private static final String ATTRIBUTE_CLIVAS = "clivas"; //clearLoopInternalVariablesAtStart.
+                                                                 //Any value, if set, other than true would indicate false.
+        private static final String[] ATTRIBUTES = {ATTRIBUTE_JIDSVN, ATTRIBUTE_CLIVAS};
 
         //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Break.TAG_NAME});
 
@@ -4371,6 +4373,13 @@ public final class CompilationUnits {
 
         private boolean joinIdWithStateVariableNames = true;  //by default let's join id with state variable names to avoid name conflicts
                                                               //(with state variables of nested loops Or of internalContext in general)
+        private boolean clearLoopInternalVariablesAtStart = false;  //this flag, if set to true, would clear all variables from the internal
+                                                                    //context map that bears the same id/name as any of the loop internal variables.
+                                                                    //By default its value is set to false and means that any variables defined
+                                                                    //inside the internal map would be accessible inside this loop cu as well
+                                                                    //and if they happen to match any of the state variables then it can affect
+                                                                    //the overall loop execution. The variables can however always be overridden
+                                                                    //by this loop cu in its 'using' block to control the behavior.
 
         @Override
         public String getTagName() {
@@ -4391,6 +4400,12 @@ public final class CompilationUnits {
                 joinIdWithStateVariableNamesTmp = "true";
             }
             joinIdWithStateVariableNames = TRUE.equalsIgnoreCase(joinIdWithStateVariableNamesTmp);
+
+            String clearLoopInternalVariablesAtStartTmp = getAttribute(ATTRIBUTE_CLIVAS);
+            if (clearLoopInternalVariablesAtStartTmp == null || "".equals(clearLoopInternalVariablesAtStartTmp)) {
+                clearLoopInternalVariablesAtStartTmp = "false";
+            }
+            clearLoopInternalVariablesAtStart = TRUE.equalsIgnoreCase(clearLoopInternalVariablesAtStartTmp);
         }
 
         @Override
@@ -4485,6 +4500,50 @@ public final class CompilationUnits {
         /****** End - overridden initializer, finalizer and using methods to prevent multiple invocations because of looping ******/
         /**************************************************************************************************************************/
 
+        private void _clearLoopInternalVariablesAtStart(java.util.Map<String, Object> internalCtx) {
+            if (!clearLoopInternalVariablesAtStart) {  //not interested in clearing any of the variables bearing the
+                                                       //same name as one or the other loop's internal variables.
+                return;
+            }
+
+            //clear the variables from internal map cpy that might represent the loop input/state variables so there is no
+            //side effect in this loop due to it being contained in some outer loop or because of some value defined in
+            //the internal map against a key bearing the same name as one of the loop variables. If there is a case of
+            //genuinely accessing such variable values then pass them in loop using some other variable names.
+            String[] loopInternalVariables = {LOOP_INPUT_PARAM_ITERABLE, LOOP_INPUT_PARAM_START,
+                                              LOOP_INPUT_PARAM_END, LOOP_INPUT_PARAM_TIMES,
+                                              //deliberating not clearing LOOP_INPUT_PARAM_ITR_COMBINATOR
+                                              //and LOOP_INPUT_PARAM_ITR_JOINER here as inheriting them from
+                                              //outer loop, if defined, may actually be convenient.
+                                              //In rare cases these could go unnoticed to cause side effect.
+                                              getStateVariable(LOOP_STATE_VARIABLE_ITERABLE_SIZE, internalCtx),
+                                              getStateVariable(LOOP_STATE_VARIABLE_START_INDEX, internalCtx),
+                                              getStateVariable(LOOP_STATE_VARIABLE_END_INDEX, internalCtx),
+                                              getStateVariable(LOOP_STATE_VARIABLE_INDEX, internalCtx),
+                                              getStateVariable(LOOP_STATE_VARIABLE_NUM_TIMES, internalCtx),
+                                              getStateVariable(LOOP_STATE_VARIABLE_ITEM_KEY, internalCtx),
+                                              getStateVariable(LOOP_STATE_VARIABLE_ITEM_VALUE, internalCtx),
+                                              getStateVariable(LOOP_STATE_VARIABLE_LAST_ITR_VALUE, internalCtx),
+                                              getStateVariable(LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR, internalCtx),
+                                              LOOP_STATE_VARIABLE_ITERABLE_SIZE, LOOP_STATE_VARIABLE_START_INDEX,
+                                              LOOP_STATE_VARIABLE_END_INDEX, LOOP_STATE_VARIABLE_INDEX,
+                                              LOOP_STATE_VARIABLE_NUM_TIMES, LOOP_STATE_VARIABLE_ITEM_KEY,
+                                              LOOP_STATE_VARIABLE_ITEM_VALUE, LOOP_STATE_VARIABLE_LAST_ITR_VALUE,
+                                              LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR};
+
+            Using[] usingAsUnitArray = getChildren(Using.class);
+            for (String key : loopInternalVariables) {
+                if (usingAsUnitArray.length == 1 && usingAsUnitArray[0] != null) {
+                    if (usingAsUnitArray[0].getChild(key) == null) {  //if the using block hasn't overridden the key's value we should
+                                                                      //just remove it to clear the corresponding internal variable.
+                        internalCtx.remove(key);
+                    }
+                } else {
+                    internalCtx.remove(key);
+                }
+            }
+        }
+
         @Override
         public Object execute(CompilationRuntimeContext compilationRuntimeContext)
                                                                throws XPathExpressionException {
@@ -4514,35 +4573,6 @@ public final class CompilationUnits {
                 //processor CU we would still be able to restore back to the original context state cleanly.
                 java.util.Map<String, Object> savedInternalContextCpy = new HashMap<String, Object>();
                 savedInternalContextCpy.putAll(savedInternalContext);
-
-                //clear the variables from internal map cpy that might represent the loop input/state variables so there is no
-                //side effect in this loop due to it being contained in some outer loop or because of some value defined in
-                //the internal map against a key bearing the same name as one of the loop variables. If there is a case of
-                //genuinely accessing such variable values then pass them in loop using some other variable names.
-                String[] loopInternalVariables = {LOOP_INPUT_PARAM_ITERABLE, LOOP_INPUT_PARAM_START,
-                                                  LOOP_INPUT_PARAM_END, LOOP_INPUT_PARAM_TIMES,
-                                                  //deliberating not clearing LOOP_INPUT_PARAM_ITR_COMBINATOR
-                                                  //and LOOP_INPUT_PARAM_ITR_JOINER here as inheriting them from
-                                                  //outer loop, if defined, may actually be convenient.
-                                                  //In rare cases these could go unnoticed to cause side effect.
-                                                  getStateVariable(LOOP_STATE_VARIABLE_ITERABLE_SIZE, savedInternalContextCpy),
-                                                  getStateVariable(LOOP_STATE_VARIABLE_START_INDEX, savedInternalContextCpy),
-                                                  getStateVariable(LOOP_STATE_VARIABLE_END_INDEX, savedInternalContextCpy),
-                                                  getStateVariable(LOOP_STATE_VARIABLE_INDEX, savedInternalContextCpy),
-                                                  getStateVariable(LOOP_STATE_VARIABLE_NUM_TIMES, savedInternalContextCpy),
-                                                  getStateVariable(LOOP_STATE_VARIABLE_ITEM_KEY, savedInternalContextCpy),
-                                                  getStateVariable(LOOP_STATE_VARIABLE_ITEM_VALUE, savedInternalContextCpy),
-                                                  getStateVariable(LOOP_STATE_VARIABLE_LAST_ITR_VALUE, savedInternalContextCpy),
-                                                  getStateVariable(LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR, savedInternalContextCpy),
-                                                  LOOP_STATE_VARIABLE_ITERABLE_SIZE, LOOP_STATE_VARIABLE_START_INDEX,
-                                                  LOOP_STATE_VARIABLE_END_INDEX, LOOP_STATE_VARIABLE_INDEX,
-                                                  LOOP_STATE_VARIABLE_NUM_TIMES, LOOP_STATE_VARIABLE_ITEM_KEY,
-                                                  LOOP_STATE_VARIABLE_ITEM_VALUE, LOOP_STATE_VARIABLE_LAST_ITR_VALUE,
-                                                  LOOP_STATE_VARIABLE_LOOP_VALUE_SO_FAR};
-                for (String key : loopInternalVariables) {
-                    savedInternalContextCpy.remove(key);
-                }
-
                 compilationRuntimeContext.setInternalContext(savedInternalContextCpy);  //savedInternalContext = savedInternalContextCpy;  //refer comment below:
                                                                                         //Updated the reference of internal context map inside compilationRuntimeContext
                                                                                         //for this getValue request as opposed to the previous scheme of using the same reference of
@@ -4561,6 +4591,11 @@ public final class CompilationUnits {
                 //java.util.Map<String, Object> originalInternalContext = super.doUsing(compilationRuntimeContext);  //call the 'using' directly using super
                 super.preGetValue(compilationRuntimeContext);  //calling the preGetValue directly using super which inturn will process 'using'
 
+                //By now we have given the opportunity to the 'using' block to execute and any overriding of the variables that the loop
+                //was interested in doing would have already been done. Now let's attempt to clear the variables from the internal context
+                //that bear the same name as one or the other loop's internal variables but have not been overridden by the loop.
+                _clearLoopInternalVariablesAtStart(compilationRuntimeContext.getInternalContext());
+
                 java.util.Map<String, Object> internalCtx = compilationRuntimeContext.getInternalContext();
                 java.util.Map<String, Object> requestContext = internalCtx;
 
@@ -4570,19 +4605,20 @@ public final class CompilationUnits {
                     return _noValue();  //"";  //since it's a group it makes sense to return a zero length string rather than null
                 }
 
+                boolean isIterableProvided = requestContext.containsKey(LOOP_INPUT_PARAM_ITERABLE);
                 Object iterable = requestContext.get(LOOP_INPUT_PARAM_ITERABLE);
                 //String iterableType = (String) requestContext.get("iterable-type");  //iterable might be string representation
                                                                                      //of object like json, properties etc.
-                Object value = "";
+                Object value = null;
                 super.doInit(compilationRuntimeContext);  //call the initializer directly using super
 
                 //internal context variables that should be made available inside finally block.
                 //Further, any variables defined here should make sense outside the loop's iteration scope.
                 final String ITERABLE_SIZE = getStateVariable(LOOP_STATE_VARIABLE_ITERABLE_SIZE, internalCtx);
                 try {
-                    if (iterable == null) {
+                    if (!isIterableProvided/*iterable == null*/) {
                         value = loopTimes(internalCtx, compilationRuntimeContext);
-                    } else if (iterable.getClass().isArray()) {
+                    } else if (iterable != null && iterable.getClass().isArray()) {
                         //make the array size available inside internal context
                         internalCtx.put(ITERABLE_SIZE, Array.getLength(iterable));
                         value = loopArray(iterable, internalCtx, compilationRuntimeContext);
@@ -4660,23 +4696,13 @@ public final class CompilationUnits {
                 endlessLoop = false;
             }
 
-            //Choosing to let the loop runs atleast once even in case there are no loop input params provided.
-            //That would give loop body a chance to run atleast once and seems to be a more natural choice than
-            //not running it at all.
-            if (startIndexAsObject == null && endIndexAsObject == null && numTimesAsObject == null) {
-                numTimes = 1;
-                endIndex = startIndex + numTimes;
-                internalCtx.put(END_INDEX, endIndex);
-                internalCtx.put(NUM_TIMES, numTimes);
-            }
-
             boolean decrement = false;
             if (!endlessLoop && endIndex < startIndex) {
                 //we have to decrement instead of increment the loop counter.
                 decrement = true;
             }
 
-            Object value = "";
+            Object value = null;
             boolean[] singleElemArrayIndicatingWhetherFirstTime = {true};
             long iterationDelayMillisecs = _iterationDelay(internalCtx);
             try {
@@ -4708,7 +4734,7 @@ public final class CompilationUnits {
         private Object loopArray(Object array,
                                  java.util.Map<String, Object> internalCtx,
                                  CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException {
-            Object value = "";
+            Object value = null;
             if (array == null) {
                 return value;
             }
@@ -4747,7 +4773,7 @@ public final class CompilationUnits {
         private Object loopIterable(Iterable iterable,
                                     java.util.Map<String, Object> internalCtx,
                                     CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException {
-            Object value = "";
+            Object value = null;
             if (iterable == null) {
                 return value;
             }
@@ -4786,7 +4812,7 @@ public final class CompilationUnits {
         private Object loopMap(java.util.Map map,
                                java.util.Map<String, Object> internalCtx,
                                CompilationRuntimeContext compilationRuntimeContext) throws XPathExpressionException {
-            Object value = "";
+            Object value = null;
             if (map == null) {
                 return value;
             }
