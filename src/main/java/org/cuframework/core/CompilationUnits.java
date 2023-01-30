@@ -4344,6 +4344,8 @@ public final class CompilationUnits {
     public static class Loop extends HeadlessExecutableGroup implements IExecutable {
         public static final String TAG_NAME = "loop";
 
+        public static final String MAX_ITERATIONS_ALLOWED = "cu.loop.max.iterations";
+
         private static final String LOOP_INPUT_PARAM_ITERABLE = "iterable";
         private static final String LOOP_INPUT_PARAM_START = "start";
         private static final String LOOP_INPUT_PARAM_END = "end";
@@ -4705,8 +4707,15 @@ public final class CompilationUnits {
             Object value = null;
             boolean[] singleElemArrayIndicatingWhetherFirstTime = {true};
             long iterationDelayMillisecs = _iterationDelay(internalCtx);
+
+            //variables to control the loop iterations count
+            int maxAllowedIterations = getMaxAllowedLoopIterationsCount();
+            int itrCount = 0;
+
             try {
                 for (int i = startIndex; endlessLoop? true: (decrement? i > endIndex: i < endIndex); i = decrement? i - 1: i + 1) {
+                    assertLoopIterationsDoesntExceedTheMaxAllowed(itrCount++, maxAllowedIterations);
+
                     //set the loop state variables inside internal context
                     internalCtx.put(LOOP_INDEX, i);
 
@@ -4746,8 +4755,15 @@ public final class CompilationUnits {
                                                               internalCtx);  //holds the consolidated value of the loop calculated so far
             int arrayLength = Array.getLength(array);  //using reflection here to keep the logic of iterating array elements generic.
             long iterationDelayMillisecs = _iterationDelay(internalCtx);
+
+            //variables to control the loop iterations count
+            int maxAllowedIterations = getMaxAllowedLoopIterationsCount();
+            int itrCount = 0;
+
             try {
                 for (int i = 0; i < arrayLength; i++) {
+                    assertLoopIterationsDoesntExceedTheMaxAllowed(itrCount++, maxAllowedIterations);
+
                     internalCtx.put(ITEM_VALUE, Array.get(array, i));  //using reflection here to keep the logic of iterating array elements generic.
                     internalCtx.put(ITEM_INDEX, i);
 
@@ -4785,8 +4801,15 @@ public final class CompilationUnits {
                                                               internalCtx);  //holds the consolidated value of the loop calculated so far
             long iterationDelayMillisecs = _iterationDelay(internalCtx);
             int index = 0;
+
+            //variables to control the loop iterations count
+            int maxAllowedIterations = getMaxAllowedLoopIterationsCount();
+            int itrCount = 0;
+
             try {
                 for (Object item: iterable) {  //for (int i = 0; i < iterable.size(); i++) {
+                    assertLoopIterationsDoesntExceedTheMaxAllowed(itrCount++, maxAllowedIterations);
+
                     internalCtx.put(ITEM_VALUE, item);
                     internalCtx.put(ITEM_INDEX, index++);
 
@@ -4825,8 +4848,15 @@ public final class CompilationUnits {
                                                               internalCtx);  //holds the consolidated value of the loop calculated so far
             long iterationDelayMillisecs = _iterationDelay(internalCtx);
             int index = 0;
+
+            //variables to control the loop iterations count
+            int maxAllowedIterations = getMaxAllowedLoopIterationsCount();
+            int itrCount = 0;
+
             try {
                 for (Object _entry: map.entrySet()) {  //map.forEach((key,item) -> {
+                    assertLoopIterationsDoesntExceedTheMaxAllowed(itrCount++, maxAllowedIterations);
+
                     java.util.Map.Entry entry = (java.util.Map.Entry) _entry;
                     internalCtx.put(ITEM_KEY, entry.getKey());
                     internalCtx.put(ITEM_VALUE, entry.getValue());
@@ -4850,6 +4880,26 @@ public final class CompilationUnits {
                 internalCtx.remove(LOOP_VALUE_SO_FAR);
             }
             return value;
+        }
+
+        private int getMaxAllowedLoopIterationsCount() {
+            int maxIterationsAllowed = -1;  //-1 means no limit
+            try {
+               maxIterationsAllowed = Integer.parseInt(System.getProperty(MAX_ITERATIONS_ALLOWED));
+            } catch (Exception e) {
+                //ignore.
+                //No limits would be enforced.
+            }
+            return maxIterationsAllowed;
+        }
+
+        private void assertLoopIterationsDoesntExceedTheMaxAllowed(int index, int maxIterationsAllowed) {
+            if (maxIterationsAllowed != -1 && index >= maxIterationsAllowed) {
+                throw new RuntimeException("You have exceeded the allowed loop iterations limit of " + maxIterationsAllowed +
+                                           (getIdOrElse() != null ? " for " + getIdOrElse() : "") +
+                                           ". It may have so happened because you are executing in a controlled environment." +
+                                           " Consider reducing the number of iterations by modifying the corresponding cu definition(s).");
+            }
         }
 
         private Object loopBody(CompilationRuntimeContext compilationRuntimeContext,
