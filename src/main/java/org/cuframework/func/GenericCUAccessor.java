@@ -41,13 +41,19 @@ import org.cuframework.core.CompiledTemplatesRegistry;
  * @author Sidharth Yadav
  *
  */
-public final class GenericCUAccessor implements IFunction {
+public class GenericCUAccessor implements IFunction {
 
-    private final String FUNC_CONTEXT_KEY = "-current-function-context-";
-    String templateId = null;
-    String[] cuAccessorPath = null;
+    protected static final String FUNC_CONTEXT_KEY = "-current-function-context-";
+    protected String templateId = null;
+    protected String[] cuAccessorPath = null;
 
-    public Object invoke(Object[] context,
+    @Override
+    public final Object invoke(Object[] context,
+                               CompilationRuntimeContext compilationRuntimeContext) throws Exception {
+        return _postCU(_cu(context, compilationRuntimeContext), context, compilationRuntimeContext);
+    }
+
+    protected Object _cu(Object[] context,
                          CompilationRuntimeContext compilationRuntimeContext) throws Exception {
         CompilationUnits.ICompilationUnit cu = CompiledTemplatesRegistry.getInstance().
                                                     processExtensions(templateId, compilationRuntimeContext).
@@ -102,6 +108,12 @@ public final class GenericCUAccessor implements IFunction {
             }
         }
         return result;
+    }
+
+    protected Object _postCU(Object cuResult,
+                             Object[] context,
+                             CompilationRuntimeContext compilationRuntimeContext) throws Exception {
+        return cuResult;  //by default just return the already calculated result of cu processing
     }
 
     public GenericCUAccessor(String templateId, String cuAccessorPath) {

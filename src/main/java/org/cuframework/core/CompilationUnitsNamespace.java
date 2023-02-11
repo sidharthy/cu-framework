@@ -41,6 +41,7 @@ import org.cuframework.core.CompilationUnits.ICompilationUnit;
 import org.cuframework.config.ConfigManager;
 import org.cuframework.func.FunctionResolver;
 import org.cuframework.func.IFunction;
+import org.cuframework.util.UtilityFunctions;
 
 /**
  * Compilation Units Namespace.
@@ -148,32 +149,7 @@ public final class CompilationUnitsNamespace {
     }
 
     private URL[] getClasspath(String tagName) {
-        Map<String, Object> classpath = ConfigManager.getInstance().getClasspath(tagName, uri, null);
-        if (classpath == null || classpath.size() == 0) {
-            return new URL[0];
-        }
-        Set<URL> urls = new HashSet<>();
-        for (Entry<String, Object> _classpathES: classpath.entrySet()) {
-            Object value = _classpathES.getValue();
-            if (value == null) {
-                continue;
-            }
-            String _classpath = value.toString().trim();
-            String jarUrl = null;
-            if (_classpath.startsWith("http:") || _classpath.startsWith("https:")) {
-                jarUrl = "jar:" + _classpath + "!/";
-            }
-            else {
-                //we assume the location points to a file on disk
-                jarUrl = "jar:file:/" + _classpath + "!/";
-            }
-            try {
-                urls.addAll(JarClasspathResolver.resolveClasspathFromJar(new URL(jarUrl)));
-            } catch(Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return urls.toArray(new URL[0]);
+        return UtilityFunctions.getClasspathURLs(ConfigManager.getInstance().getClasspath(tagName, uri, null));
     }
 
     //This method can set only 'more' units and not the 'core' units.

@@ -32,9 +32,14 @@ import java.io.StringWriter;
 
 import java.lang.reflect.Array;
 
+import java.net.URL;
+
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -237,5 +242,33 @@ public final class UtilityFunctions {
     //it will return the value of getNodeName() of the passed node.
     public static String getLocalOrNodeName(Node n) {
         return n.getLocalName() != null? n.getLocalName(): n.getNodeName();
+    }
+
+    public static URL[] getClasspathURLs(Map<String, Object> classpath) {
+        if (classpath == null || classpath.size() == 0) {
+            return new URL[0];
+        }
+        Set<URL> urls = new HashSet<>();
+        for (Entry<String, Object> _classpathE: classpath.entrySet()) {
+            Object value = _classpathE.getValue();
+            if (value == null) {
+                continue;
+            }
+            String _classpath = value.toString().trim();
+            String jarUrl = null;
+            if (_classpath.startsWith("http:") || _classpath.startsWith("https:")) {
+                jarUrl = "jar:" + _classpath + "!/";
+            }
+            else {
+                //we assume the location points to a file on disk
+                jarUrl = "jar:file:/" + _classpath + "!/";
+            }
+            try {
+                urls.addAll(JarClasspathResolver.resolveClasspathFromJar(new URL(jarUrl)));
+            } catch(Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return urls.toArray(new URL[0]);
     }
 }

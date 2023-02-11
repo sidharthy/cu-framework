@@ -402,7 +402,7 @@ public class ConfigManager {
         Object customFunctions = null;
         for (HierarchicalConfig config: new HierarchicalConfig[]{getNamespaceConfig(namespaceURI, DEFAULT_CU_NAMESPACE_URI), getRealmConfig(realmId)}) {
             if (config != null) {
-                //custom functions definition would not be looked up only at the top config level (i.e. namespace Or realm level)
+                //custom function definitions would be looked up only at the top config levels (i.e. namespace Or realm level)
                 customFunctions = config.get(CUSTOM_FUNCTIONS_KEY);
             }
             if (customFunctions != null) {

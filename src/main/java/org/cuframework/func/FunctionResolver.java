@@ -31,6 +31,7 @@ package org.cuframework.func;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.cuframework.config.ConfigManager;
 import org.cuframework.core.CompilationUnits;
 import org.cuframework.core.CompiledTemplate;
 import org.cuframework.core.CompiledTemplatesRegistry;
@@ -42,6 +43,16 @@ import org.cuframework.ns.NamespaceDynamicTemplatesHandler;
  *
  */
 public final class FunctionResolver {
+    private static final String CU_ATTRIBUTE_FN_TYPE = "fntype";  //This attribute can be used to define the type of the function defined
+                                                                  //in the namespace definition. Supported values are:
+                                                                  //  - 'class': It means that the cu evaluation should be assumed to
+                                                                  //    represent the class name of the actual function and treated accordingly.
+                                                                  //  - <any other value, including null>: It means the function should be treated as a
+                                                                  //    generic cu accessor and just return the value of cu evaluation.
+                                                                  //This attribute is deliberately not defined inside any of the ICompilationUnit impls
+                                                                  //because it is applicable only to the cu's defined as functions and used primarily by
+                                                                  //this class during function resolution.
+
     private static final String CORE_FUNCTIONS = "core-functions";
     private static final String MORE_FUNCTIONS = "more-functions";
 
@@ -87,8 +98,18 @@ public final class FunctionResolver {
                         continue;  //cus with null|empty ids won't be registered as functions
                     }
                     if (cu instanceof CompilationUnits.IExecutable || cu instanceof CompilationUnits.IEvaluable) {
-                        IFunction func = new GenericCUAccessor(mct.getId(),
-                                                                mct.getId() + CompiledTemplatesRegistry.TEMPLATE_PATH_SPLITTER + cu.getIdOrElse());
+                        String fnType = cu.getAttribute(CU_ATTRIBUTE_FN_TYPE);
+                        IFunction func = null;
+                        if ("class".equalsIgnoreCase(fnType)) {
+                            func = new ClassFunction(mct.getId(),
+                                                     mct.getId() + CompiledTemplatesRegistry.TEMPLATE_PATH_SPLITTER + cu.getIdOrElse());
+                            ((ClassFunction) func).setInheritedClasspath(ConfigManager.
+                                                                               getInstance().
+                                                                                    getClasspath(null, namespaceURI, null));
+                        } else {
+                            func = new GenericCUAccessor(mct.getId(),
+                                                         mct.getId() + CompiledTemplatesRegistry.TEMPLATE_PATH_SPLITTER + cu.getIdOrElse());
+                        }
                         functionsRepository.get(MORE_FUNCTIONS).put(cu.getIdOrElse(), func);
                     }
                 }
