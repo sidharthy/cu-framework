@@ -82,13 +82,17 @@ public class NamespaceDynamicTemplatesHandler {
         StringBuilder template = new StringBuilder();
         template.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
         template.append("<root name=\"" + templateUID + "\">");
-        template.append("  <headless-group name=\"" + templateUID + "\">");  //NOTE: The in-memory template string is added inside 2 level
-                                                                             //hierarchy of 'root > headless-group'. Any changes to this
-                                                                             //could break things at other places. If it is to be absolutely
-                                                                             //changed then also make changes inside FunctionResolver where
-                                                                             //the custom functions are traced and registered.
+        template.append("  <headless-executable-group name=\"" + templateUID + "\">");
+                                                                     //NOTE: The in-memory template string is added inside 2 level
+                                                                     //hierarchy of 'root > headless-executable-group'. Any changes to this
+                                                                     //could break things at other places. If it is to be absolutely
+                                                                     //changed then also make changes inside FunctionResolver where
+                                                                     //the custom functions are traced and registered.
+                                                                     //Also, used headless-executable-group instead of headless-group to
+                                                                     //ensure that the 'using' block is retained even if defined at the
+                                                                     //root level in the inm.
         template.append(inMemoryTemplateString);
-        template.append("  </headless-group>");
+        template.append("  </headless-executable-group>");
         template.append("</root>");
         return template.toString();
     }
