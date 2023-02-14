@@ -74,12 +74,18 @@ class SourceSerializerForGroupCU implements ICompilationUnitSerializer {
         boolean isGroupTypeList = groupToSerialize.getType() == GroupType.LIST;
         StringBuilder strBuilder = new StringBuilder();
 
-        if (!groupToSerialize.isHeadless()) {
+        if (!groupToSerialize.isHeadless() &&
+            selfSerializationPolicy != SerializationPolicy.ONLYVALUE) {  //don't need to serialize the group prologue if it is either
+                                                                         //a headless group or if it's selfSerializationPolicy is set
+                                                                         //to 'value' only.
             serializeGroupPrologue(groupToSerialize, strBuilder, compilationRuntimeContext);
         }
         serializeChildrenOfGroupAsSource(groupToSerialize, isGroupTypeList, childSerializationPolicy,
                                          strBuilder, compilationRuntimeContext);
-        if (!groupToSerialize.isHeadless()) {
+        if (!groupToSerialize.isHeadless() &&
+            selfSerializationPolicy != SerializationPolicy.ONLYVALUE) {  //don't need to serialize the group epilogue if it is either
+                                                                         //a headless group or if it's selfSerializationPolicy is set
+                                                                         //to 'value' only.
             serializeGroupEpilogue(groupToSerialize, strBuilder, compilationRuntimeContext);
         }
 

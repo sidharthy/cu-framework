@@ -222,13 +222,17 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("sum",  //mathematical sum of numeric values
                           (context, compilationRuntimeContext) -> {
-                                           Object[] input = context.length == 1 && context[0] != null && context[0].getClass().isArray()?
-                                                                 (Object[]) context[0]:
-                                                                 context;
+                                           Object input = context.length == 1 &&
+                                                          context[0] != null &&
+                                                          context[0].getClass().isArray()?
+                                                              context[0]:
+                                                              context;
                                            Number sum = null;
                                            Number number = null;
                                            boolean nonNumericInputFound = false;
-                                           for (Object obj: input) {
+                                           int arrayLength = Array.getLength(input);
+                                           for (int i = 0; i < arrayLength; i++) {
+                                               Object obj = Array.get(input, i);
                                                try {
                                                    number = toNum.toNum(obj);
                                                } catch (NumberFormatException nfe) {
@@ -256,13 +260,17 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("multiply",  //mathematical multiplication of numeric values
                           (context, compilationRuntimeContext) -> {
-                                           Object[] input = context.length == 1 && context[0] != null && context[0].getClass().isArray()?
-                                                                 (Object[]) context[0]:
-                                                                 context;
+                                           Object input = context.length == 1 &&
+                                                          context[0] != null &&
+                                                          context[0].getClass().isArray()?
+                                                              context[0]:
+                                                              context;
                                            Number multiplication = null;
                                            Number number = null;
                                            boolean nonNumericInputFound = false;
-                                           for (Object obj: input) {
+                                           int arrayLength = Array.getLength(input);
+                                           for (int i = 0; i < arrayLength; i++) {
+                                               Object obj = Array.get(input, i);
                                                try {
                                                    number = toNum.toNum(obj);
                                                } catch (NumberFormatException nfe) {
@@ -607,7 +615,7 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("length",
                            (context, compilationRuntimeContext) -> {
-                                           Object target = context.length > 0? context[0]: null;
+                                           Object target = context.length == 1? context[0]: context;
                                            int size = -1;
                                            if (target instanceof List) {
                                                size = ((List) target).size();
@@ -629,12 +637,21 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("array-copyofrange",
                           (context, compilationRuntimeContext) -> {
-                                           Object[] array = context.length > 0? (Object[]) context[0]: null;
-                                           if (array == null) {
+                                           //Valid context data is:
+                                           //    context array should have max length of 3
+                                           //    0th index = array to be copied
+                                           //    1st index = fromIndex (optional)
+                                           //    2nd index = toIndex (optional)
+                                           if (context.length == 0 || context.length > 3) {
+                                               return null;
+                                           }
+                                           Object input = context[0];
+                                           boolean isArray = input != null? input.getClass().isArray(): false;
+                                           if (!isArray) {
                                                return null;
                                            }
                                            int fromIndex = 0;
-                                           int toIndex = array.length;
+                                           int toIndex = Array.getLength(input);
                                            try {
                                                if (context.length > 1 && context[1] != null)
                                                    fromIndex = Integer.parseInt(context[1].toString());
@@ -647,54 +664,182 @@ final class DefaultPlatformFunctions {
                                            } catch (NumberFormatException nfe) {
                                                //ignore
                                            }
-                                           return Arrays.copyOfRange(array, fromIndex, toIndex);
+                                           Object result = null;
+                                           if (input instanceof Object[]) {    //since mostly cus would be dealing with Object arrays
+                                                                               //so checking first for Object[] would be most optimized
+                                               result = Arrays.copyOfRange((Object[]) input, fromIndex, toIndex);
+                                           } else if (input instanceof boolean[]) {
+                                               result = Arrays.copyOfRange((boolean[]) input, fromIndex, toIndex);
+                                           } else if (input instanceof char[]) {
+                                               result = Arrays.copyOfRange((char[]) input, fromIndex, toIndex);
+                                           } else if (input instanceof byte[]) {
+                                               result = Arrays.copyOfRange((byte[]) input, fromIndex, toIndex);
+                                           } else if (input instanceof short[]) {
+                                               result = Arrays.copyOfRange((short[]) input, fromIndex, toIndex);
+                                           } else if (input instanceof int[]) {
+                                               result = Arrays.copyOfRange((int[]) input, fromIndex, toIndex);
+                                           } else if (input instanceof long[]) {
+                                               result = Arrays.copyOfRange((long[]) input, fromIndex, toIndex);
+                                           } else if (input instanceof float[]) {
+                                               result = Arrays.copyOfRange((float[]) input, fromIndex, toIndex);
+                                           } else if (input instanceof double[]) {
+                                               result = Arrays.copyOfRange((double[]) input, fromIndex, toIndex);
+                                           }
+                                           return result;
                                        });
         coreFunctions.put("array-contains",
                           (context, compilationRuntimeContext) -> {
-                                           Object collection = context.length > 0? context[0]: null;
-                                           if (collection == null || context.length < 2) {
+                                           //Valid context data is:
+                                           //    context array should have max length of 2
+                                           //    0th index = array to be searched in
+                                           //    1st index = value to be searched
+                                           if (context.length != 2) {
+                                               return null;
+                                           }
+                                           Object collection = context[0];
+                                           if (collection == null) {
                                                return null;  //should we return false?
                                            }
                                            Object value = context[1];
+                                           boolean isArray = collection.getClass().isArray();
                                            return collection instanceof Collection? ((Collection) collection).contains(value):
-                                                  collection.getClass().isArray()? Arrays.asList((Object[]) collection).contains(value):
+                                                  isArray && collection instanceof Object[]? Arrays.asList((Object[]) collection).contains(value):
+                                                  isArray && collection instanceof boolean[]? Arrays.asList((boolean[]) collection).contains(value):
+                                                  isArray && collection instanceof char[]? Arrays.asList((char[]) collection).contains(value):
+                                                  isArray && collection instanceof byte[]? Arrays.asList((byte[]) collection).contains(value):
+                                                  isArray && collection instanceof short[]? Arrays.asList((short[]) collection).contains(value):
+                                                  isArray && collection instanceof int[]? Arrays.asList((int[]) collection).contains(value):
+                                                  isArray && collection instanceof long[]? Arrays.asList((long[]) collection).contains(value):
+                                                  isArray && collection instanceof float[]? Arrays.asList((float[]) collection).contains(value):
+                                                  isArray && collection instanceof double[]? Arrays.asList((double[]) collection).contains(value):
                                                   null;
+                                       });
+        coreFunctions.put("array-item",
+                          (context, compilationRuntimeContext) -> {
+                                           //Valid context data is:
+                                           //    context array should have max length of 2
+                                           //    0th index = source array
+                                           //    1st index = index of the item to be returned
+                                           if (context.length != 2) {
+                                               return null;
+                                           }
+                                           Object collection = context[0];
+                                           if (collection == null) {
+                                               return null;
+                                           }
+                                           int index = -1;
+                                           try {
+                                               if (context[1] != null) {
+                                                   index = Integer.parseInt(context[1].toString());
+                                               }
+                                           } catch (NumberFormatException nfe) {
+                                               //ignore
+                                           }
+                                           return index < 0? null:
+                                                  collection instanceof List && index < ((List) collection).size()?
+                                                                                                ((List) collection).get(index):
+                                                  collection.getClass().isArray() && index < Array.getLength(collection)?
+                                                                                                Array.get(collection, index):
+                                                  null;
+                                       });
+        coreFunctions.put("array-sort",
+                          (context, compilationRuntimeContext) -> {
+                                           Object input = context.length == 1 &&
+                                                          context[0] != null &&
+                                                          context[0].getClass().isArray()?
+                                                             context[0]:
+                                                             context;
+                                           boolean isArray = input != null? input.getClass().isArray(): false;
+                                           if (!isArray) {
+                                               return null;
+                                           }
+                                           if (input instanceof Object[]) {  //since mostly cus would be dealing with Object arrays
+                                                                             //so checking first for Object[] would be most optimized
+                                               Arrays.sort((Object[]) input);
+                                           } else if (input instanceof char[]) {
+                                               Arrays.sort((char[]) input);
+                                           } else if (input instanceof byte[]) {
+                                               Arrays.sort((byte[]) input);
+                                           } else if (input instanceof short[]) {
+                                               Arrays.sort((short[]) input);
+                                           } else if (input instanceof int[]) {
+                                               Arrays.sort((int[]) input);
+                                           } else if (input instanceof long[]) {
+                                               Arrays.sort((long[]) input);
+                                           } else if (input instanceof float[]) {
+                                               Arrays.sort((float[]) input);
+                                           } else if (input instanceof double[]) {
+                                               Arrays.sort((double[]) input);
+                                           }
+                                           return input;
+                                       });
+        coreFunctions.put("map-contains",
+                          (context, compilationRuntimeContext) -> {
+                                           //Valid context data is:
+                                           //    context array should have max length of 2
+                                           //    0th index = source map
+                                           //    1st index = key to be checked for existance
+                                           if (context.length != 2) {
+                                               return null;
+                                           }
+                                           Object collection = context[0];
+                                           if (collection == null) {
+                                               return null;  //should we return false?
+                                           }
+                                           Object key = context[1];
+                                           return collection instanceof Map? ((Map) collection).containsKey(key): null;
+                                       });
+        coreFunctions.put("map-item",
+                          (context, compilationRuntimeContext) -> {
+                                           //Valid context data is:
+                                           //    context array should have max length of 2
+                                           //    0th index = source map
+                                           //    1st index = key for which the value is to be returned
+                                           if (context.length != 2) {
+                                               return null;
+                                           }
+                                           Object collection = context[0];
+                                           if (collection == null) {
+                                               return null;
+                                           }
+                                           Object key = context[1];
+                                           return collection instanceof Map? ((Map) collection).get(key): null;
                                        });
         coreFunctions.put("file-new",
                           (context, compilationRuntimeContext) -> {
-                                           Object path = context.length > 0? context[0]: null;
+                                           Object path = context.length == 1? context[0]: null;
                                            return path == null? null:
                                                     (path instanceof String? new File((String) path):
                                                      path instanceof URI? new File((URI) path): null);
                                        });
         coreFunctions.put("file-name",
                           (context, compilationRuntimeContext) -> {
-                                           File f = context.length > 0? (File) context[0]: null;
+                                           File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.getName(): null;
                                        });
         coreFunctions.put("file-parent",
                           (context, compilationRuntimeContext) -> {
-                                           File f = context.length > 0? (File) context[0]: null;
+                                           File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.getParent(): null;
                                        });
         coreFunctions.put("file-path",
                           (context, compilationRuntimeContext) -> {
-                                           File f = context.length > 0? (File) context[0]: null;
+                                           File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.getPath(): null;
                                        });
         coreFunctions.put("file-size",
                           (context, compilationRuntimeContext) -> {
-                                           File f = context.length > 0? (File) context[0]: null;
+                                           File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.length(): null;
                                        });
         coreFunctions.put("file-exists",
                           (context, compilationRuntimeContext) -> {
-                                           File f = context.length > 0? (File) context[0]: null;
+                                           File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.exists(): null;
                                        });
         coreFunctions.put("file-isdirectory",
                           (context, compilationRuntimeContext) -> {
-                                           File f = context.length > 0? (File) context[0]: null;
+                                           File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.isDirectory(): null;
                                        });
         coreFunctions.put("random",
@@ -770,7 +915,7 @@ final class DefaultPlatformFunctions {
         coreFunctions.put("str-replace", 
                           (context, compilationRuntimeContext) -> {
                                            String str = context.length > 0? (String) context[0]: null;
-                                           if (str == null || context.length < 3) {
+                                           if (str == null || context.length != 3) {
                                                return str;
                                            }
                                            String target = (String) context[1];
@@ -780,7 +925,7 @@ final class DefaultPlatformFunctions {
         coreFunctions.put("str-replaceregex",
                           (context, compilationRuntimeContext) -> {
                                            String str = context.length > 0? (String) context[0]: null;
-                                           if (str == null || context.length < 3) {
+                                           if (str == null || context.length != 3) {
                                                return str;
                                            }
                                            String regex = (String) context[1];
@@ -789,8 +934,11 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-startswith",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
-                                           if (str == null || context.length < 2) {
+                                           if (context.length != 2) {
+                                               return null;  //should we return false?
+                                           }
+                                           String str = (String) context[0];
+                                           if (str == null) {
                                                return null;  //should we return false?
                                            }
                                            String prefix = (String) context[1];
@@ -798,8 +946,11 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-endswith",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
-                                           if (str == null || context.length < 2) {
+                                           if (context.length != 2) {
+                                               return null;  //should we return false?
+                                           }
+                                           String str = (String) context[0];
+                                           if (str == null) {
                                                return null;  //should we return false?
                                            }
                                            String suffix = (String) context[1];
@@ -807,8 +958,11 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-contains",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
-                                           if (str == null || context.length < 2) {
+                                           if (context.length != 2) {
+                                               return null;  //should we return false?
+                                           }
+                                           String str = (String) context[0];
+                                           if (str == null) {
                                                return null;  //should we return false?
                                            }
                                            String substring = (String) context[1];
@@ -816,8 +970,11 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-indexof",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
-                                           if (str == null || context.length < 2) {
+                                           if (context.length != 2) {
+                                               return null;  //should we return -1?
+                                           }
+                                           String str = (String) context[0];
+                                           if (str == null) {
                                                return null;  //should we return -1?
                                            }
                                            String substring = (String) context[1];
@@ -825,8 +982,11 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-matches",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
-                                           if (str == null || context.length < 2) {
+                                           if (context.length != 2) {
+                                               return null;  //should we return false?
+                                           }
+                                           String str = (String) context[0];
+                                           if (str == null) {
                                                return null;  //should we return false?
                                            }
                                            String regex = (String) context[1];
@@ -834,22 +994,25 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-trim",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
+                                           String str = context.length == 1? (String) context[0]: null;
                                            return str != null? str.trim(): null;
                                        });
         coreFunctions.put("str-uppercase",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
+                                           String str = context.length == 1? (String) context[0]: null;
                                            return str != null? str.toUpperCase(): null;
                                        });
         coreFunctions.put("str-lowercase",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
+                                           String str = context.length == 1? (String) context[0]: null;
                                            return str != null? str.toLowerCase(): null;
                                        });
         coreFunctions.put("str-split",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
+                                           if (context.length == 0 || context.length > 3) {
+                                               return null;
+                                           }
+                                           String str = (String) context[0];
                                            if (str == null || context.length < 2) {
                                                return str == null? null: str.split("", 0);  //should we simply return null?
                                            }
@@ -872,14 +1035,15 @@ final class DefaultPlatformFunctions {
                                            }
                                            delimiter = delimiter == null? "": delimiter;
                                            StringBuilder strBuilder = new StringBuilder();
-                                           Object[] arrayToJoin = context.length == 2 &&
-                                                                  context[1] != null &&
-                                                                  context[1].getClass().isArray()?
-                                                                         (Object[]) context[1]:
-                                                                         context;
-                                           for (int i = (arrayToJoin == context? 1: 0); i < arrayToJoin.length; i++) {
-                                               strBuilder.append(arrayToJoin[i]);
-                                               if (i != arrayToJoin.length - 1) {
+                                           Object arrayToJoin = context.length == 2 &&
+                                                                context[1] != null &&
+                                                                context[1].getClass().isArray()?
+                                                                    context[1]:
+                                                                    context;
+                                           int arrayLength = Array.getLength(arrayToJoin);
+                                           for (int i = (arrayToJoin == context? 1: 0); i < arrayLength; i++) {
+                                               strBuilder.append(Array.get(arrayToJoin, i));
+                                               if (i != arrayLength - 1) {
                                                  strBuilder.append(delimiter);
                                                }
                                            }
@@ -897,17 +1061,20 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-tobytes",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
+                                           String str = context.length == 1? (String) context[0]: null;
                                            return str != null? str.getBytes(): null;
                                        });
         coreFunctions.put("str-frombytes",
                           (context, compilationRuntimeContext) -> {
-                                           byte[] bytes = context.length > 0? (byte[]) context[0]: null;
+                                           byte[] bytes = context.length == 1? (byte[]) context[0]: null;
                                            return bytes != null? new String(bytes): null;
                                        });
         coreFunctions.put("str-todate",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
+                                           if (context.length == 0 || context.length > 2) {
+                                               return null;
+                                           }
+                                           String str = (String) context[0];
                                            String format = context.length > 1? (String) context[1]: null;
                                            return str != null?
                                                     (format == null?
@@ -918,12 +1085,15 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-toinstant",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
+                                           String str = context.length == 1? (String) context[0]: null;
                                            return str != null? Instant.parse(str): null;
                                        });
         coreFunctions.put("str-tolocaldatetime",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
+                                           if (context.length == 0 || context.length > 2) {
+                                               return null;
+                                           }
+                                           String str = (String) context[0];
                                            String format = context.length > 1? (String) context[1]: null;
                                            return str != null?
                                                     (format == null?
@@ -934,7 +1104,10 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("substring",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
+                                           if (context.length == 0 || context.length > 3) {
+                                               return null;
+                                           }
+                                           String str = (String) context[0];
                                            if (str == null || context.length < 2) {
                                                return str == null? null: str;
                                            }
@@ -973,7 +1146,7 @@ final class DefaultPlatformFunctions {
                           (context, compilationRuntimeContext) -> {
                                            long epoch = -1;
                                            try {
-                                               if (context.length > 0 && context[0] != null) {
+                                               if (context.length == 1 && context[0] != null) {
                                                    epoch = Long.parseLong(context[0].toString());
                                                }
                                            } catch (NumberFormatException nfe) {
@@ -983,12 +1156,15 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("date-toepoch",
                           (context, compilationRuntimeContext) -> {
-                                           Date date = context.length > 0? (Date) context[0]: null;
+                                           Date date = context.length == 1? (Date) context[0]: null;
                                            return date != null? date.getTime(): null;
                                        });
         coreFunctions.put("date-tostr",
                           (context, compilationRuntimeContext) -> {
-                                           Date date = context.length > 0? (Date) context[0]: null;
+                                           if (context.length == 0 || context.length > 2) {
+                                               return null;
+                                           }
+                                           Date date = (Date) context[0];
                                            String format = context.length > 1? (String) context[1]: null;
                                            return date != null?
                                                     (format != null?
@@ -1067,16 +1243,22 @@ final class DefaultPlatformFunctions {
                                                                       null);  //should we instead return an empty string?
         coreFunctions.put("equals",
                           (context, compilationRuntimeContext) -> {
-                                           Object obj1 = context.length > 0? context[0]: null;
-                                           if (obj1 == null) {
+                                           if (context.length < 2) {
                                                return false;
                                            }
-                                           Object obj2 = context.length > 1? context[1]: null;
-                                           return obj1.equals(obj2);
+                                           boolean _equals = true;
+                                           Object prevObj = context[0];
+                                           for (Object obj: context) {
+                                               _equals &= obj != null && obj.equals(prevObj);
+                                               if (!_equals) {
+                                                   break;
+                                               }
+                                           }
+                                           return _equals;
                                        });
         coreFunctions.put("hashcode",
                           (context, compilationRuntimeContext) -> {
-                                           Object obj = context.length > 0? context[0]: null;
+                                           Object obj = context.length == 1? context[0]: null;
                                            return obj != null? obj.hashCode(): null;
                                        });
         return coreFunctions;

@@ -5,6 +5,8 @@
       <valueof id="data">
         <json container="CONTEXT-MAP" name="json-obj"/>
       </valueof>
+      <get id="EMPTY" default=""/>
+      <get id="COMMA" default=","/>
     </using>
     <finally>
       <log id="begin-test-msg">
@@ -28,6 +30,146 @@
         </condition>
         <condition id="6" expression="null, b, X">
           <get id="ifelsen">$$$ifelsen($$$null()), $$$ifelsen($$$false(), a, b, c), $$$ifelsen($$$false(), true, $$$null(), X)</get>
+        </condition>
+      </assert>
+      <assert id="functions-assertions-2" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8">
+        <condition id="1" expression="15, 15, 6">
+          <get>$$$sum(1,2,3,4,5), $$$sum($$$array(1,2,3,4,5)), $$$sum(6)</get>
+        </condition>
+        <condition id="2" expression="120, 120, 6">
+          <get>$$$multiply(1,2,3,4,5), $$$multiply($$$array(1,2,3,4,5)), $$$multiply(6)</get>
+        </condition>
+        <condition id="3" expression="1, 2, 4">
+          <get>$$$div(8,5), $$$mod(8,3), $$$subtract(6,2)</get>
+        </condition>
+        <condition id="4" expression="8\.0, 8\.0, 6\.0, 5\.0, 8, 8, 6, 5">
+          <get>
+            $$$abs(8), $$$abs(-8), $$$ceil(5.3), $$$floor(5.3), $$$int($$$abs(8)), $$$int($$$abs(-8)), $$$int($$$ceil(5.3)), $$$int($$$floor(5.3))
+          </get>
+        </condition>
+        <condition id="5" expression="false, true, true, null, null, null, null">
+          <get>
+            $$$lt(8, 5), $$$lt(3, 4), $$$lte(6.7, 6.7), $$$lt(3, 4,), $$$lte(,3, 4), $$$lt(3, 4, 5), $$$lte(3)
+          </get>
+        </condition>
+        <condition id="6" expression="true, false, true, true, null, null">
+          <get>
+            $$$gt(3,1), $$$gt(3.2,3.3), $$$gte(3,1), $$$gte(3,3.0), $$$gt(3,4,5), $$$gte(3)
+          </get>
+        </condition>
+        <condition id="7" expression="false, false, true, true, false, false">
+          <get>
+            $$$equals(), $$$equals(3), $$$equals(1,1), $$$equals(a,a,a), $$$equals(1,1,2), $$$equals(1,1,)
+          </get>
+        </condition>
+        <condition id="8" expression="false, true">
+          <get>
+            $$$equals(1,$$$int(1)), $$$equals($$$int(1),$$$int(1))
+          </get>
+        </condition>
+      </assert>
+      <assert id="functions-assertions-3" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9">
+        <condition id="1" expression="0, 0, 2, 2, 2, 2, 3, 1, null">  <!-- White space in function params is ignored
+                                                                           hence $$$length(  ) would evaluate to 0.
+                                                                           Also comma is used as delimiter of function params
+                                                                           and empty params before and after the comma would
+                                                                           also be counted -->
+          <get>
+            $$$length(), $$$length(  ), $$$length(1,2), $$$length(1,), $$$length(,1), $$$length(,), $$$length(,,), $$$length(2), $$$length($$$null())
+          </get>
+        </condition>
+        <condition id="2" expression="6, 5, 3">
+          <get>$$$length(abcdef), $$$length($$$array(1,2,3,4,5)), $$$length($$$array(1,2,3,4,5), a, b)</get>
+        </condition>
+        <condition id="3" expression="12345, 34">
+          <get id="array-cor1">
+            $$$str-join(,$$$array-copyofrange($$$array(1,2,3,4,5))), $$$str-join(,$$$array-copyofrange($$$array(1,2,3,4,5), 2, 4))
+          </get>
+        </condition>
+        <condition id="4" expression="null, null">
+          <get id="array-cor2">
+            $$$array-copyofrange($$$array(1,2,3,4,5), 2, 4, excess-param), $$$array-copyofrange($$$array(1,2,3,4,5), 2, 4,)
+          </get>
+        </condition>
+        <condition id="5" expression="true, false, null">
+          <get>
+            $$$array-contains($$$array(1,2,3), 3), $$$array-contains($$$array(1,2,3), 33), $$$array-contains($$$array(1,2,3), 3, excess-param)
+          </get>
+        </condition>
+        <condition id="6" expression="22, null, null">
+          <get>
+            $$$array-item($$$array(11,22,33), 1), $$$array-item($$$array(11,22,33), 33), $$$array-item($$$array(11,22,33), 1, excess-param)
+          </get>
+        </condition>
+        <condition id="7" expression="123456789, 123456789">
+          <get>
+            $$$str-join(,$$$array-sort($$$array(1, 2, 3, 5, 4, 9, 6, 8, 7))), $$$str-join(,$$$array-sort(1,2,3,5,4,9,6,8,7))
+          </get>
+        </condition>
+        <condition id="8" expression="true, true, false, null">
+          <select>
+            $$$map-contains($map, 1), $$$map-contains($map, 2), $$$map-contains($map, 3), $$$map-contains($map, 1, excess-param)
+            <using>
+              <headless-executable-group id="map">
+                <using>
+                  <get id="group-serializer-type" default="map"/>
+                </using>
+                <get id="1" default="1st value"/>
+                <get id="2" default="2nd value"/>
+              </headless-executable-group>
+            </using>
+          </select>
+        </condition>
+        <condition id="9" expression="1st value, 2nd value, null, null">
+          <select>
+            $$$map-item($map, 1), $$$map-item($map, 2), $$$map-item($map, 3), $$$map-item($map, 1, excess-param)
+            <using>
+              <headless-executable-group id="map">
+                <using>
+                  <get id="group-serializer-type" default="map"/>
+                </using>
+                <get id="1" default="1st value"/>
+                <get id="2" default="2nd value"/>
+              </headless-executable-group>
+            </using>
+          </select>
+        </condition>
+      </assert>
+      <assert id="functions-assertions-4" expression="1 and 2 and 3 and 4 and 5 and 6 and 7">
+        <condition id="1" expression="abcdef, abcdef, abcdef, bcdef, bcdef">
+          <get>
+            $$$substring(abcdef), $$$substring(abcdef, 0), $$$substring(abcdef, 0, 6), $$$substring(abcdef,1,), $$$substring(abcdef,1,-1)
+          </get>
+        </condition>
+        <condition id="2" expression="abcd, abcd, cd, null, null">
+          <get>
+            $$$substring(abcdef,,4), $$$substring(abcdef, -1, 4), $$$substring(abcdef, 2, 4), $$$substring(abcdef, -2, 4), $$$substring(abcdef, 0, 44)
+          </get>
+        </condition>
+        <condition id="3" expression="abcdef, abdcefdc, abcdef, abc">
+          <get>
+            $$$str-replace(abcdef), $$$str-replace(abcdefcd, cd, dc), $$$str-replace(abcdef,$EMPTY,$EMPTY), $$$str-replace(abcdef,def,$EMPTY)
+          </get>
+        </condition>
+        <condition id="4" expression="abcdef, dbddefd">
+          <get>
+            $$$str-replaceregex(abcdef), $$$str-replaceregex(abcdefc,[c$COMMA;a],d)
+          </get>
+        </condition>
+        <condition id="5" expression="abcdef, abc">
+          <get>
+            $$$str-replaceregex(abcdef,$EMPTY,$EMPTY), $$$str-replaceregex(abcdefde,d.*,$EMPTY)
+          </get>
+        </condition>
+        <condition id="6" expression="6, 2, 2">
+          <get>
+            $$$length($$$str-split(abcdef)), $$$length($$$str-split(abcdef, c)), $$$length($$$str-split(abcdef, a))
+          </get>
+        </condition>
+        <condition id="7" expression="1, 2">
+          <get>
+            $$$length($$$str-split(abcdef, f)), $$$length($$$str-split(abcdef, f, -1))
+          </get>
         </condition>
       </assert>
       <log id="end-test-msg">

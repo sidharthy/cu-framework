@@ -487,7 +487,10 @@ public class EL {
                 }
             }
             paramsAsExpressions.clear();
-            String[] finalParams = strBuilder.toString().split(FN_PARAMS_DELIMITER);
+            String finalParamsString = strBuilder.toString();
+            String[] finalParams = "".equals(finalParamsString.trim())?
+                                       new String[0]:
+                                       finalParamsString.split(FN_PARAMS_DELIMITER, -1);
             for (String param: finalParams) {
                 for (Expression exprToRestore: hashcodedExpressions) {
                     param = param.replace("" + exprToRestore.getExpression().hashCode(), exprToRestore.getExpression());
