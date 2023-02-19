@@ -2523,6 +2523,9 @@ public final class CompilationUnits {
             if (areMatchingTypes(ICompilationUnit.class, type)) {
                 ICompilationUnit[] allChildren = getElementsFromList(children, ICompilationUnit.class, new ICompilationUnit[0]);
                 return (T[]) (allChildren == null? getZeroLengthArrayOfType(type): allChildren);
+            } else if (areMatchingTypes(IExtensible.class, type)) {
+                IExtensible[] extensibleChildren = getElementsFromList(children, IExtensible.class, new IExtensible[0]);
+                return (T[]) (extensibleChildren == null? getZeroLengthArrayOfType(type): extensibleChildren);
             } else if (areMatchingTypes(IEvaluable.class, type)) {
                 IEvaluable[] evaluableChildren = getElementsFromList(children, IEvaluable.class, new IEvaluable[0]);
                 return (T[]) (evaluableChildren == null? getZeroLengthArrayOfType(type): evaluableChildren);
@@ -2672,49 +2675,49 @@ public final class CompilationUnits {
             return extendedUnit;
         }
 
-        private static Group[] getCommonChildren(Group checkInsideGroup, Group checkFromGroup) {
-            Group[] sourceGroups = checkInsideGroup.getChildren(Group.class);
-            Group[] intersectionGroups = checkFromGroup.getChildren(Group.class);
-            List<Group> commonGroups = new LinkedList<>();
-            for (Group grp: sourceGroups) {
-                for (Group intersectionGrp: intersectionGroups) {
-                    if (grp == intersectionGrp) {
-                        commonGroups.add(grp);
+        private static IExtensible[] getCommonChildren(Group checkInsideGroup, Group checkFromGroup) {
+            IExtensible[] sourceExtensibles = checkInsideGroup.getChildren(IExtensible.class);
+            IExtensible[] intersectionExtensibles = checkFromGroup.getChildren(IExtensible.class);
+            List<IExtensible> commonExtensibles = new LinkedList<>();
+            for (IExtensible extensible: sourceExtensibles) {
+                for (IExtensible intersectionExtensible: intersectionExtensibles) {
+                    if (extensible == intersectionExtensible) {
+                        commonExtensibles.add(extensible);
                         break;
                     }
                 }
             }
-            return commonGroups.toArray(new Group[0]);
+            return commonExtensibles.toArray(new IExtensible[0]);
         }
 
         private boolean doExtendImmediateChildren(CompilationRuntimeContext compilationRuntimeContext,
                                                   CompiledTemplatesRegistry mctr,
                                                   Group origGrp) throws XPathExpressionException {
-            boolean allGroupsCacheable = true;
-            java.util.Map<Group, Group> extendedGrpMap = new HashMap<Group, Group>();
-            Group[] thisGroups = getCommonChildren(this, origGrp);  //this.getChildren(Group.class);
-            if (thisGroups != null) {
-                for (Group group : thisGroups) {
-                    if (!group.areExtensionsMarkedAsProcessed()){
-                        Group extendedGrp = group.extend(compilationRuntimeContext, mctr);
-                        //if (extendedGrp.areExtensionsMarkedAsProcessed()) {  //Irrespective of whether the extensions can be marked as
-                                                                               //processed or not we would like to update the extended
-                                                                               //group's reference inside the cu's groups list or else the right
-                                                                               //structure would not be available for processing. Further, since
-                                                                               //we are now processing the entire extension logic on a cloned copy
-                                                                               //obtained at the beginning of doExtend method we don't even risk
-                                                                               //corrupting the master copy with a transient group which was valid
-                                                                               //only for this extension call and could return a completely different
-                                                                               //structure if another call to doExtend is made (owing to existence of
-                                                                               //conditional extends or dynamic group names ($ed id))
-                            extendedGrpMap.put(group, extendedGrp);
+            boolean allExtensiblesCacheable = true;
+            java.util.Map<IExtensible, IExtensible> extendedUnitsMap = new HashMap<>();
+            IExtensible[] thisExtensibles = getCommonChildren(this, origGrp);  //this.getChildren(Group.class);
+            if (thisExtensibles != null) {
+                for (IExtensible extensible : thisExtensibles) {
+                    if (!extensible.areExtensionsMarkedAsProcessed()) {
+                        IExtensible extendedUnit = (IExtensible) extensible.extend(compilationRuntimeContext, mctr);
+                        //if (extendedUnit.areExtensionsMarkedAsProcessed()) {  //Irrespective of whether the extensions can be marked as
+                                                                                //processed or not we would like to update the extended
+                                                                                //unit's reference inside the cu's children list or else the right
+                                                                                //structure would not be available for processing. Further, since
+                                                                                //we are now processing the entire extension logic on a cloned copy
+                                                                                //obtained at the beginning of doExtend method we don't even risk
+                                                                                //corrupting the master copy with a transient group which was valid
+                                                                                //only for this extension call and could return a completely different
+                                                                                //structure if another call to doExtend is made (owing to existence of
+                                                                                //conditional extends or dynamic group names ($ed id))
+                            extendedUnitsMap.put(extensible, extendedUnit);
                         //}
-                        //allGroupsCacheable = allGroupsCacheable & extendedGrp.areExtensionsMarkedAsProcessed();
-                        allGroupsCacheable = allGroupsCacheable & group.areExtensionsMarkedAsProcessed();
+                        //allExtensiblesCacheable = allExtensibleCacheable & extendedUnit.areExtensionsMarkedAsProcessed();
+                        allExtensiblesCacheable = allExtensiblesCacheable & extensible.areExtensionsMarkedAsProcessed();
                                                                            //In the above statemnt we should check the extensions processed status
-                                                                           //on the orig group and not the extendedGrp because the extendedGrp is
+                                                                           //on the orig unit and not the extendedUnit because the extendedUnit could be
                                                                            //a clone of base and its 'extensions processed' status is always marked
-                                                                           //as true. It's instance is valid only for a specific compilationRuntimeContext
+                                                                           //as true. It's instance would be valid only for a specific compilationRuntimeContext
                                                                            //and doesn't represent the finality. The orig however however is updated with
                                                                            //the final extensions processing status and only if there were no
                                                                            //<conditional extends>, <dynamic group idOrElse in the base units> its extension
@@ -2722,12 +2725,12 @@ public final class CompilationUnits {
                     }
                 }
             }
-            for (Entry<Group, Group> entry : extendedGrpMap.entrySet()) {
+            for (Entry<IExtensible, IExtensible> entry : extendedUnitsMap.entrySet()) {
                 int index = children.indexOf(entry.getKey());
                 children.add(index, entry.getValue());
                 children.remove(index + 1);
             }
-            return allGroupsCacheable;
+            return allExtensiblesCacheable;
         }
 
         /****************************************** 28th May 20 ******************************************/
@@ -3810,17 +3813,86 @@ public final class CompilationUnits {
             return (T[]) (onArray == null ? getZeroLengthArrayOfType(type) : onArray);
         }
 
+        /********************************************************************************************************/
+        /************************************Inheritance Related Methods*****************************************/
+        //used to create a new instance while cloning. We need a separate method for this so that the cloning of subclassing can
+        //create their own instance type but still reuse the cloning logic in the super class.
+        protected Set newInstance() {
+            return new Set();
+        }
+
+        //deep clone
+        protected Set getClone() {
+            Set clonedSet = newInstance();
+            clonedSet.setNodeContext(getNodeContext());
+            clonedSet.copyAttributes(getAttributes());
+            clonedSet.copyExtensions(getExtensions());
+            clonedSet.markExtensionsAsProcessed(areExtensionsMarkedAsProcessed());
+            if (on != null) {
+                clonedSet.on = on.getClone();
+            }
+
+            clonedSet.initPerformanceVariables();  //this method must be called after all attributes have been set inside the cloned unit as
+                                                   //the initilization of performance variables is based on values of some attributes.
+
+            clonedSet.evaluables = new LinkedList<IEvaluable>();
+            clonedSet.evaluables.addAll(evaluables);
+            return clonedSet;
+        }
+
         @Override
         protected Set doExtend(CompilationRuntimeContext compilationRuntimeContext,
-                                                        CompiledTemplatesRegistry mctr) {
-            //TODO do we really need inheritance at set level???
-            markExtensionsAsProcessed(true);  //since we are not doing anything to process inheritance for set, let's mark extensions
-                                              //as processed to ensure the overall marking of extension processing status of the
-                                              //containing group cus are also done correctly (set cus can exist inside init, finally blocks
-                                              //and the extensions_processed flag of all extensible units is taken into consideration
-                                              //before marking the same at group level).
-            return this;
+                                                        CompiledTemplatesRegistry mctr)
+                                                                throws XPathExpressionException {
+            //We wouldn't explicitly process <extends> cu defined at the <set> level.
+            //We would however attempt to individually extend the extensible evaluables (e.g. Group) added as children of this <set> cu.
+
+            Set extendedUnit = this.getClone();
+            boolean canMarkExtensionsAsProcessed = true;
+            canMarkExtensionsAsProcessed = canMarkExtensionsAsProcessed &
+                                                   extendedUnit.doExtendImmediateChildren(compilationRuntimeContext, mctr);
+            extendedUnit.markExtensionsAsProcessed(true);  //This is a cloned version and valid only for a specific compilationRuntimeContext instance.
+                                                           //Let's mark it's extensions proceessed status to always true.
+            /*if (!canMarkExtensionsAsProcessed) {
+                markExtensionsAsProcessed(false);
+            }*/
+            markExtensionsAsProcessed(canMarkExtensionsAsProcessed);  //Let's mark the actual extensions processed status on
+                                                                      //the orig unit from which the extendedUnit was cloned.
+            return extendedUnit;
         }
+
+        private boolean doExtendImmediateChildren(CompilationRuntimeContext compilationRuntimeContext,
+                                                  CompiledTemplatesRegistry mctr) throws XPathExpressionException {
+            boolean allEvaluablesCacheable = true;
+            java.util.Map<IEvaluable, IEvaluable> extendedEvaluableMap = new HashMap<>();
+            if (evaluables != null) {
+                for (IEvaluable evaluable : evaluables) {
+                    if (evaluable instanceof IExtensible && !((IExtensible) evaluable).areExtensionsMarkedAsProcessed()) {
+                        IEvaluable extendedEvaluable = (IEvaluable) ((IExtensible) evaluable).extend(compilationRuntimeContext, mctr);
+
+                        extendedEvaluableMap.put(evaluable, extendedEvaluable);
+
+                        allEvaluablesCacheable = allEvaluablesCacheable & ((IExtensible) evaluable).areExtensionsMarkedAsProcessed();
+                                                                   //In the above statemnt we should check the extensions processed status
+                                                                   //on the orig evaluable and not the extendedEvaluable because the extendedEvaluable
+                                                                   //could be a clone of base and its 'extensions processed' status is always marked
+                                                                   //as true. It's instance would then be valid only for a specific compilationRuntimeContext
+                                                                   //and doesn't represent the finality. The orig however however is updated with
+                                                                   //the final extensions processing status and only if there were no
+                                                                   //<conditional extends>, <dynamic group idOrElse in the base units> its extension
+                                                                   //processing status would be set to true.
+                    }
+                }
+            }
+            for (Entry<IEvaluable, IEvaluable> entry : extendedEvaluableMap.entrySet()) {
+                int index = evaluables.indexOf(entry.getKey());
+                evaluables.add(index, entry.getValue());
+                evaluables.remove(index + 1);
+            }
+            return allEvaluablesCacheable;
+        }
+        /********************************************************************************************************/
+        /********************************************************************************************************/
 
         @Override
         public boolean satisfies(CompilationRuntimeContext compilationRuntimeContext)
@@ -5262,9 +5334,19 @@ public final class CompilationUnits {
     public static class Assert extends Conditional implements IExecutable {
         public static final String TAG_NAME = "assert";
 
+        private static final String ATTRIBUTE_ASSERTION_FAILURE_MESSAGE = "failureMessage";  //used only with AssertionException
+        private static final String ATTRIBUTE_ASSERTION_FAILURE_CODE = "failureCode";  //used only with AssertionException
+        private static final String[] ATTRIBUTES = {ATTRIBUTE_ASSERTION_FAILURE_MESSAGE,
+                                                    ATTRIBUTE_ASSERTION_FAILURE_CODE};
+
         @Override
         public String getTagName() {
             return Assert.TAG_NAME;
+        }
+
+        @Override
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
         }
 
         @Override
@@ -5273,16 +5355,40 @@ public final class CompilationUnits {
             /*
             boolean satisfies = (boolean) getValue(compilationRuntimeContext);
             if (!satisfies) {
-                throw new AssertionException(getIdOrElse(), "Test Failed");
+                throw new AssertionException(getIdOrElse(),
+                                             getFailureMessage(compilationRuntimeContext),
+                                             getFailureCode(compilationRuntimeContext));
             }
             return satisfies;
             */
 
             if (!matches(compilationRuntimeContext)) {  //let's call matches(...) here instead of getValue(...) as getEvaluatedValue(...) may perform translation
                                                         //and return a non boolean value and we are interested in checking for true or false here.
-                throw new AssertionException(getIdOrElse(), "Test Failed");
+                throw new AssertionException(getIdOrElse(),
+                                             getFailureMessage(compilationRuntimeContext),
+                                             getFailureCode(compilationRuntimeContext));
             }
             return true;  //reching here means the assertion test passed.
+        }
+
+        private String getFailureMessage(CompilationRuntimeContext compilationRuntimeContext) {
+            String msg = null;
+            try {
+                msg = getAttribute(ATTRIBUTE_ASSERTION_FAILURE_MESSAGE, compilationRuntimeContext);
+            } catch (Exception e) {
+                //let's ignore
+            }
+            return msg == null? "Test Failed": msg;
+        }
+
+        private String getFailureCode(CompilationRuntimeContext compilationRuntimeContext) {
+            String code = null;
+            try {
+                code = getAttribute(ATTRIBUTE_ASSERTION_FAILURE_CODE, compilationRuntimeContext);
+            } catch (Exception e) {
+                //let's ignore
+            }
+            return code;
         }
 
         @Override
@@ -5314,15 +5420,24 @@ public final class CompilationUnits {
 
         public static class AssertionException extends RuntimeException {
             private String assertionId = null;
-            private String message = null;
+            private String code = null;
 
             public AssertionException(String assertionId, String message) {
+                this(assertionId, message, null);
+            }
+
+            public AssertionException(String assertionId, String message, String code) {
                 super(message);
                 this.assertionId = assertionId;
+                this.code = code;
             }
 
             public String getAssertionId() {
                 return assertionId;
+            }
+
+            public String getCode() {
+                return code;
             }
 
             public String toString() {
