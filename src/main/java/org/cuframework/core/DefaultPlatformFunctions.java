@@ -1051,13 +1051,12 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-format",
                           (context, compilationRuntimeContext) -> {
-                                           String str = context.length > 0? (String) context[0]: null;
-                                           if (str == null || context.length < 2) {
-                                               return str;
+                                           String strFormat = context.length > 0? (String) context[0]: null;
+                                           if (strFormat == null || context.length < 2) {
+                                               return strFormat;
                                            }
-                                           String format = (String) context[1];
-                                           Object[] args = Arrays.copyOfRange(context, 2, context.length);
-                                           return str.format(format, args);
+                                           Object[] args = Arrays.copyOfRange(context, 1, context.length);
+                                           return String.format(strFormat, args);
                                        });
         coreFunctions.put("str-tobytes",
                           (context, compilationRuntimeContext) -> {

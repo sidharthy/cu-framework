@@ -28,10 +28,12 @@
 
 package org.cuframework.core;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,6 +41,7 @@ import javax.xml.xpath.XPathExpressionException;
 
 import org.w3c.dom.NodeList;
 
+import org.cuframework.MapOfMaps;
 import org.cuframework.TemplateCompilationException;
 import org.cuframework.TemplateXPathEngine;
 
@@ -61,6 +64,8 @@ public final class CompiledTemplatesRegistry {
     private String primaryLookupDir = INSTALLED_META_INF_DIR;
     private String secondaryLookupDir = RESOURCE_META_INF_DIR;
 
+    private CompilationUnits.IEvaluable templateResolverCU = null;
+
     private CompiledTemplatesRegistry() {
     }
 
@@ -78,6 +83,14 @@ public final class CompiledTemplatesRegistry {
 
     public String getSecondaryLookupDirectory() {
         return this.secondaryLookupDir;
+    }
+
+    public void setTemplateResolver(CompilationUnits.IEvaluable cu) {
+        this.templateResolverCU = cu;
+    }
+
+    public CompilationUnits.IEvaluable getTemplateResolver() {
+        return templateResolverCU;
     }
 
     public static CompiledTemplatesRegistry getInstance() {
@@ -206,15 +219,36 @@ public final class CompiledTemplatesRegistry {
     private InputStream getXmlObjectStream(String xmlObjectName,
                                            String primaryLookupDir,
                                            String secondaryLookupDir) throws FileNotFoundException {
-        InputStream inputStream;
-        File file;
-        String fileName = primaryLookupDir + xmlObjectName;
-        file = new File(fileName);
-        if (file.isFile() && file.canRead()) {
-            return new FileInputStream(fileName);
+        InputStream inputStream = null;
+        if (templateResolverCU != null) {
+            CompilationRuntimeContext compilationRuntimeContext = new CompilationRuntimeContext();
+            MapOfMaps mapOfMaps = new MapOfMaps();
+            Map<String, Object> contextMap = new HashMap<>();
+            contextMap.put("template-uid", xmlObjectName);
+            contextMap.put("primary-lookup-dir", primaryLookupDir);
+            contextMap.put("secondary-lookup-dir", secondaryLookupDir);
+            mapOfMaps.putMap(MapOfMaps.Name.CONTEXT_MAP.getKey(), contextMap);
+            compilationRuntimeContext.setExternalContext(mapOfMaps);
+            try {
+                Object value = CompilationUnits.getValue(templateResolverCU,
+                                                         compilationRuntimeContext);
+                inputStream = value instanceof InputStream? (InputStream) value:
+                              value instanceof String? new ByteArrayInputStream(((String) value).getBytes()):
+                              null;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
-        fileName = secondaryLookupDir + xmlObjectName;
-        inputStream = CompiledTemplatesRegistry.class.getClassLoader().getResourceAsStream(fileName);
+        if (inputStream == null) {
+            File file;
+            String fileName = primaryLookupDir + xmlObjectName;
+            file = new File(fileName);
+            if (file.isFile() && file.canRead()) {
+                return new FileInputStream(fileName);
+            }
+            fileName = secondaryLookupDir + xmlObjectName;
+            inputStream = CompiledTemplatesRegistry.class.getClassLoader().getResourceAsStream(fileName);
+        }
         return inputStream;
     }
 }
