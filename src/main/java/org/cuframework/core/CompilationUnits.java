@@ -1069,8 +1069,47 @@ public final class CompilationUnits {
         //private static final String CHILDREN_XPATH = "./extends";
         //private static final List<String> RECOGNIZED_CHILD_TAGS = Arrays.asList(new String[]{Extends.TAG_NAME});
 
+        private static final String ATTRIBUTE_ORDER_OF_IMPLICIT_EXTENDS = "oie";  //if the extensible unit is a custom tag and has an implicit body
+                                                                                  //defined inside namespace then the order of processing the
+                                                                                  //implicit <extends> clause can be controlled using this attribute.
+                                                                                  //It should have only integer values:
+                                                                                  //    == 0 would insert at 0th index which inturn would have the
+                                                                                  //    effect that any non-group child cus in the namespace -body-
+                                                                                  //    def cannot not be overriden through any of the explicit extends
+                                                                                  //    clause. Non-group CUs added directly as children of this
+                                                                                  //    extensible unit would however override all base cus bearing
+                                                                                  //    the same ids in the implict or explicit base extensions.
+
+                                                                                  //    > 0 would insert the implicit extends at that index. If the total
+                                                                                  //    number of explicit <extends> clauses is less than this number
+                                                                                  //    then the implicit <extends> clause would be inserted at last.
+
+                                                                                  //    a -ve or null value (default) would means insertion at last.
+
+        private static final String[] ATTRIBUTES = {ATTRIBUTE_ORDER_OF_IMPLICIT_EXTENDS};
+
         private List<Extends> extensions = null;
         private boolean extensionsProcessed = false;
+        private int orderOfImplicitExtends = -1;  //a negative value would mean to insert the implicit <extends> clause at last in the sequence
+
+        @Override
+        public boolean isAttributeNative(String attr) {
+            return super.isAttributeNative(attr) || UtilityFunctions.isItemInArray(attr, ATTRIBUTES);
+        }
+
+        @Override
+        protected void initPerformanceVariables() {
+            super.initPerformanceVariables();
+
+            String oie = getAttribute(ATTRIBUTE_ORDER_OF_IMPLICIT_EXTENDS);
+            if (oie != null) {
+                try {
+                    orderOfImplicitExtends = Integer.parseInt(oie);
+                } catch (NumberFormatException nfe) {
+                    //can be ignored. Default behavior would prevail
+                }
+            }
+        }
 
         @Override
         protected void doCompileChildren(Node n) throws XPathExpressionException {
@@ -1094,7 +1133,11 @@ public final class CompilationUnits {
                 if (cuBodyTemplateId != null) {
                     Extends _extends = Extends.newInstance(n.getOwnerDocument().createElement(Extends.TAG_NAME), cuBodyTemplateId);
                     if (_extends != null) {
-                        extensions.add(0, _extends);
+                        if (orderOfImplicitExtends >= 0 && orderOfImplicitExtends < extensions.size()) {
+                            extensions.add(orderOfImplicitExtends, _extends);
+                        } else {
+                            extensions.add(_extends);
+                        }
                     } else {
                         //TODO log
                     }
