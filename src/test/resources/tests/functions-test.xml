@@ -7,6 +7,8 @@
       </valueof>
       <get id="EMPTY" default=""/>
       <get id="COMMA" default=","/>
+      <get id="CUNS" default="http://www.cuframework.org"/>  <!-- Default CU namespace -->
+      <get id="FNCLSN" default="org.cuframework.func.IFunction"/>  <!-- IFunction class name -->
     </using>
     <finally>
       <log id="begin-test-msg">
@@ -174,6 +176,88 @@
         <condition id="8" expression="null, abcdef %s, abcdef ijk, a:b">
           <get>
             $$$str-format(), $$$str-format(abcdef %s), $$$str-format(abcdef %s, ijk), $$$str-format(%s:%s, a, b)
+          </get>
+        </condition>
+      </assert>
+      <assert id="functions-assertions-5" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9">
+        <condition id="1" expression="false, false, true">
+          <get>
+            $$$isnull($$$class(java.util.ArrayList)), $$$isnull($$$toclass(java.util.ArrayList)), $$$isnull($$$toclass(java.util.ArrayList,))
+          </get>
+        </condition>
+        <condition id="2" expression="1, 2, true">
+          <get>
+            $$$length($$$toclassarray(java.util.ArrayList)), $$$length($$$toclassarray(java.util.ArrayList,)), $$$instanceof($$$instantiate(java.util.ArrayList), java.util.ArrayList)
+          </get>
+        </condition>
+        <condition id="3" expression="true, true">
+          <select>
+            $$$instanceof($$$instantiate($$$constructor($ALIST)), $ALIST), $$$instanceof($$$instantiate($$$constructor($ALIST, $$$toclassarray($$$class(int)),), $$$array($$$int(5))), $ALIST)
+            <using>
+              <get id="ALIST" default="java.util.ArrayList"/>
+            </using>
+          </select>
+        </condition>
+        <condition id="4" expression="0, 0">
+          <get>
+            $$$length($$$instantiate($$$constructor(java.util.ArrayList))), $$$length($$$instantiate($$$constructor(java.util.ArrayList, $$$toclassarray($$$class(int)),), $$$array($$$int(5))))
+          </get>
+        </condition>
+        <condition id="5"> <!-- not defining any expression as there is nothing to validate the outcome of casting. Just exception shouldn't be thrown -->
+          <get>
+            $$$cast($$$instantiate(java.util.ArrayList), $$$class(java.util.AbstractList)), $$$cast($$$instantiate(java.util.Properties), $$$class(java.util.Hashtable))
+          </get>
+        </condition>
+        <condition id="6" expression="0, 1, 3">
+          <get>
+            $$$length($$$array-oftype($$$class(int))), $$$length($$$array-oftype($$$class(java.lang.Integer),)), $$$length($$$array-oftype($$$class(int), $$$int(1),, $$$int(2)))
+          </get>
+        </condition>
+        <condition id="7" expression="true, true, true, true, true, true, true, true">
+          <select>
+            $$$instanceof($Z, [Z), $$$instanceof($C, [C), $$$instanceof($B, [B), $$$instanceof($S, [S), $$$instanceof($I, [I), $$$instanceof($J, [J), $$$instanceof($F, [F), $$$instanceof($D, [D)
+            <using>
+              <get id="Z">$$$array-oftype($$$class(boolean))</get>
+              <get id="C">$$$array-oftype($$$class(char))</get>
+              <get id="B">$$$array-oftype($$$class(byte))</get>
+              <get id="S">$$$array-oftype($$$class(short))</get>
+              <get id="I">$$$array-oftype($$$class(int))</get>
+              <get id="J">$$$array-oftype($$$class(long))</get>
+              <get id="F">$$$array-oftype($$$class(float))</get>
+              <get id="D">$$$array-oftype($$$class(double))</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="8" expression="2, false">
+          <get>
+            $$$array-item($$$array-oftype($$$class(int), $$$int(1), $$$int(2)), 1), $$$array-item($$$array-oftype($$$class(boolean), $$$true(), $$$false()), 1)
+          </get>
+        </condition>
+        <condition id="9" expression="false, \u0000, 0, 0, 0, 0, 0\.0, 0\.0"> <!-- default values of primitive data types -->
+          <select>
+            $$$array-item($Z, 0), $$$array-item($C, 0), $$$array-item($B, 0), $$$array-item($S, 0), $$$array-item($I, 0), $$$array-item($J, 0), $$$array-item($F, 0), $$$array-item($D, 0)
+            <using>
+              <get id="Z">$$$array-oftype($$$class(boolean),)</get>
+              <get id="C">$$$array-oftype($$$class(char),)</get>
+              <get id="B">$$$array-oftype($$$class(byte),)</get>
+              <get id="S">$$$array-oftype($$$class(short),)</get>
+              <get id="I">$$$array-oftype($$$class(int),)</get>
+              <get id="J">$$$array-oftype($$$class(long),)</get>
+              <get id="F">$$$array-oftype($$$class(float),)</get>
+              <get id="D">$$$array-oftype($$$class(double),)</get>
+            </using>
+          </select>
+        </condition>
+      </assert>
+      <assert id="functions-assertions-6" expression="1 and 2">
+        <condition id="1" expression="true, true, true, true">
+          <get>
+            $$$instanceof($$$ifunc-ref(int), $FNCLSN), $$$instanceof($$$ifunc-ref(abs,), $FNCLSN), $$$instanceof($$$ifunc-ref(mod, $CUNS), $FNCLSN), $$$isnull($$$ifunc-ref(mod, unknownns))
+          </get>
+        </condition>
+        <condition id="2" expression="2, 3.0, 5.0, true">
+          <get>
+            $$$ifunc-invoke($$$ifunc-ref(int), 2), $$$ifunc-invoke($$$ifunc-ref(float,), 3), $$$ifunc-invoke2($$$ifunc-ref(double, $CUNS), $$$array(5)), $$$ifunc-invoke2($$$ifunc-ref(true))
           </get>
         </condition>
       </assert>

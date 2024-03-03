@@ -33,6 +33,8 @@ import java.io.File;
 import java.lang.reflect.Array;
 
 import java.net.URI;
+import java.net.URL;
+import java.net.URLClassLoader;
 
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -49,6 +51,7 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cuframework.func.IFunction;
+import org.cuframework.util.UtilityFunctions;
 
 /**
  * Default Platform Functions.
@@ -101,6 +104,40 @@ final class DefaultPlatformFunctions {
                                                number = toNum.toNum(input);
                                            } catch (NumberFormatException nfe3) {
                                                //number parsing failed. null would be returned.
+                                           }
+                                           return number;
+                                       });
+        coreFunctions.put("byte",
+                          (context, compilationRuntimeContext) -> {
+                                           Object input = context.length == 1? context[0]: null;
+                                           Byte number = null;
+                                           if (input instanceof Byte) {
+                                               number = (Byte) input;
+                                           } else if (input instanceof Number) {
+                                               number = ((Number) input).byteValue();
+                                           } else if (input instanceof String) {
+                                               try {
+                                                   number = Byte.parseByte((String) input);
+                                               } catch (NumberFormatException nfe) {
+                                                   //byte parsing failed. null would be returned.
+                                               }
+                                           }
+                                           return number;
+                                       });
+        coreFunctions.put("short",
+                          (context, compilationRuntimeContext) -> {
+                                           Object input = context.length == 1? context[0]: null;
+                                           Short number = null;
+                                           if (input instanceof Short) {
+                                               number = (Short) input;
+                                           } else if (input instanceof Number) {
+                                               number = ((Number) input).shortValue();
+                                           } else if (input instanceof String) {
+                                               try {
+                                                   number = Short.parseShort((String) input);
+                                               } catch (NumberFormatException nfe) {
+                                                   //short parsing failed. null would be returned.
+                                               }
                                            }
                                            return number;
                                        });
@@ -635,6 +672,62 @@ final class DefaultPlatformFunctions {
                           (context, compilationRuntimeContext) -> {
                                            return context;  //return context array as is
                                        });
+        coreFunctions.put("array-oftype",
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length == 0) {
+                                               return null;
+                                           }
+                                           Class clazz = (Class) context[0];
+                                           if (clazz == null) {
+                                               return null;
+                                           }
+                                           Object array = Array.newInstance(clazz, context.length - 1);
+                                           for (int i = 1; i < context.length; i++) {
+                                               int index = i - 1;
+                                               if (context[i] == null) {
+                                                   continue;  //element at 'index' in array would remain null
+                                               }
+                                               if (array instanceof Object[]) {  //since mostly cus would be dealing with Object arrays
+                                                                                 //so checking first for Object[] would be most optimized
+                                                   Array.set(array, index, context[i]);
+                                               } else if (array instanceof boolean[]) {
+                                                   Array.setBoolean(array, index, (boolean) context[i]);
+                                               } else if (array instanceof char[]) {
+                                                   Array.setChar(array, index, (char) context[i]);
+                                               } else if (array instanceof byte[]) {
+                                                   Array.setByte(array, index, (byte) context[i]);
+                                               } else if (array instanceof short[]) {
+                                                   Array.setShort(array, index, (short) context[i]);
+                                               } else if (array instanceof int[]) {
+                                                   Array.setInt(array, index, (int) context[i]);
+                                               } else if (array instanceof long[]) {
+                                                   Array.setLong(array, index, (long) context[i]);
+                                               } else if (array instanceof float[]) {
+                                                   Array.setFloat(array, index, (float) context[i]);
+                                               } else if (array instanceof double[]) {
+                                                   Array.setDouble(array, index, (double) context[i]);
+                                               }
+                                           }
+                                           return array;
+                                       });
+        coreFunctions.put("array-oftypeandsize",
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length == 0 || context.length > 2) {
+                                               return null;
+                                           }
+                                           Class clazz = (Class) context[0];
+                                           if (clazz == null) {
+                                               return null;
+                                           }
+                                           int size = 0;
+                                           try {
+                                               if (context.length > 1 && context[1] != null)
+                                                   size = Integer.parseInt(context[1].toString());
+                                           } catch (NumberFormatException nfe) {
+                                               //ignore
+                                           }
+                                           return Array.newInstance(clazz, size);
+                                       });
         coreFunctions.put("array-copyofrange",
                           (context, compilationRuntimeContext) -> {
                                            //Valid context data is:
@@ -1065,8 +1158,10 @@ final class DefaultPlatformFunctions {
                                        });
         coreFunctions.put("str-frombytes",
                           (context, compilationRuntimeContext) -> {
-                                           byte[] bytes = context.length == 1? (byte[]) context[0]: null;
-                                           return bytes != null? new String(bytes): null;
+                                           return context.length == 1?
+                                                      (context[0] instanceof byte[]? new String((byte[]) context[0]):
+                                                       context[0] instanceof char[]? new String((char[]) context[0]): null)
+                                                      : null;
                                        });
         coreFunctions.put("str-todate",
                           (context, compilationRuntimeContext) -> {
@@ -1229,9 +1324,44 @@ final class DefaultPlatformFunctions {
                                                                   context[0] != null && context[1] != null &&
                                                                   context[0].getClass().isAssignableFrom(context[1].getClass()));
         coreFunctions.put("instanceof",
-                          (context, compilationRuntimeContext) -> context.length == 2 &&
-                                                                  context[0] != null && context[1] instanceof String &&
-                                                                  Class.forName((String) context[1]).isInstance(context[0]));
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length != 2) {
+                                               return false;
+                                           }
+                                           Object obj = context[0];
+                                           Object clazz = context[1];
+                                           Class whichClass = null;
+                                           if (clazz instanceof String) {
+                                               String className = (String) clazz;
+
+                                               //first check if the requested class corresponds to a primitive type
+                                               if ("boolean".equals(className)) {
+                                                   whichClass = boolean.class;
+                                               } else if ("char".equals(className)) {
+                                                   whichClass = char.class;
+                                               } else if ("byte".equals(className)) {
+                                                   whichClass = byte.class;
+                                               } else if ("short".equals(className)) {
+                                                   whichClass = short.class;
+                                               } else if ("int".equals(className)) {
+                                                   whichClass = int.class;
+                                               } else if ("long".equals(className)) {
+                                                   whichClass = long.class;
+                                               } else if ("float".equals(className)) {
+                                                   whichClass = float.class;
+                                               } else if ("double".equals(className)) {
+                                                   whichClass = double.class;
+                                               }
+                                               if (whichClass == null) {
+                                                   whichClass = Class.forName(className);  //if specific classpath is to be used to load the class then
+                                                                                           //first use the $$$class function and pass the resultant Class
+                                                                                           //to the instanceof function.
+                                               }
+                                           } else if (clazz instanceof Class) {
+                                               whichClass = (Class) clazz;
+                                           }
+                                           return obj != null && whichClass != null && whichClass.isInstance(obj);
+                                       });
         coreFunctions.put("typeof",
                           (context, compilationRuntimeContext) -> context.length == 1 && context[0] != null?
                                                                       context[0].getClass().getName():
@@ -1259,6 +1389,190 @@ final class DefaultPlatformFunctions {
                           (context, compilationRuntimeContext) -> {
                                            Object obj = context.length == 1? context[0]: null;
                                            return obj != null? obj.hashCode(): null;
+                                       });
+        coreFunctions.put("cast",  //casting function at runtime is not of much value, especially when getting
+                                   //used with reflection as the object remains same.
+                                   //This function however can find limited use to abend the flow if the object
+                                   //is not of specific type by throwing ClassCastException.
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length == 0 || context.length > 2) {
+                                               return null;
+                                           }
+                                           Object obj = context[0];
+                                           Class clazz = context.length == 2? (Class) context[1]: null;
+                                           if (clazz == null) {
+                                               return obj;  //return obj as is
+                                           }
+                                           return clazz.cast(obj);
+                                       });
+        coreFunctions.put("toclass",
+                          (context, compilationRuntimeContext) -> {
+                                           Object obj = context.length == 1? context[0]: null;
+                                           Class clazz = null;
+                                           if (obj instanceof Class) {
+                                               clazz = (Class) obj;
+                                           } else if (obj != null) {
+                                               clazz = obj.getClass();
+                                           }
+                                           return clazz;
+                                       });
+        coreFunctions.put("toclassarray",
+                          (context, compilationRuntimeContext) -> {
+                                           Class classes[] = new Class[context.length];
+                                           for (int i = 0; i < context.length; i++) {
+                                               Object obj = context[i];
+                                               if (obj instanceof Class) {
+                                                   classes[i] = (Class) obj;
+                                               } else if (obj != null) {
+                                                   classes[i] = obj.getClass();
+                                               }
+                                           }
+                                           return classes;
+                                       });
+        coreFunctions.put("class",
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length == 0 || context.length > 2) {
+                                               return null;
+                                           }
+                                           Object clazz = context[0];
+                                           Class returnClass = null;
+                                           if (clazz instanceof String) {
+                                               String className = (String) clazz;
+
+                                               //first check if the requested class corresponds to a primitive type
+                                               if ("boolean".equals(className)) {
+                                                   returnClass = boolean.class;
+                                               } else if ("char".equals(className)) {
+                                                   returnClass = char.class;
+                                               } else if ("byte".equals(className)) {
+                                                   returnClass = byte.class;
+                                               } else if ("short".equals(className)) {
+                                                   returnClass = short.class;
+                                               } else if ("int".equals(className)) {
+                                                   returnClass = int.class;
+                                               } else if ("long".equals(className)) {
+                                                   returnClass = long.class;
+                                               } else if ("float".equals(className)) {
+                                                   returnClass = float.class;
+                                               } else if ("double".equals(className)) {
+                                                   returnClass = double.class;
+                                               }
+                                               if (returnClass == null) {
+                                                   Object[] cp = context.length == 2?
+                                                                     (Object[]) context[1]:  //classpath should be passed as Object[]
+                                                                     null;
+                                                   returnClass = Class.forName(className,
+                                                                               true,
+                                                                               URLClassLoader.newInstance(cp == null?
+                                                                                                           new URL[0]:
+                                                                                                           UtilityFunctions.getClasspathURLs(cp),
+                                                                                                          clazz.getClass().getClassLoader())
+                                                                              );
+                                               }
+                                           } else if (clazz instanceof Class) {
+                                               returnClass = (Class) clazz;
+                                           }
+                                           return returnClass;
+                                       });
+        coreFunctions.put("constructor",
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length == 0 || context.length > 3) {
+                                               return null;
+                                           }
+                                           Object clazz = context[0];
+                                           java.lang.reflect.Constructor returnObj = null;
+                                           if (clazz instanceof String) {
+                                               Class[] argTypes = context.length >= 2?
+                                                                      (Class[]) context[1]:  //arg types should be passed as Class[]
+                                                                      null;
+                                               Object[] cp = context.length == 3?
+                                                                 (Object[]) context[2]:  //classpath should be passed as Object[]
+                                                                 null;
+                                               returnObj = Class.forName((String) clazz,
+                                                                         true,
+                                                                         URLClassLoader.newInstance(cp == null?
+                                                                                                     new URL[0]:
+                                                                                                     UtilityFunctions.getClasspathURLs(cp),
+                                                                                                    clazz.getClass().getClassLoader())
+                                                                        ).getConstructor(argTypes);
+                                           } else if (clazz instanceof java.lang.reflect.Constructor) {
+                                               returnObj = (java.lang.reflect.Constructor) clazz;
+                                           }
+                                           return returnObj;
+                                       });
+        coreFunctions.put("instantiate",
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length == 0 || context.length > 2) {
+                                               return null;
+                                           }
+                                           Object clazz = context[0];
+                                           Object returnObj = null;
+                                           if (clazz instanceof String) {
+                                               Object[] cp = context.length == 2?
+                                                                 (Object[]) context[1]:  //classpath should be passed as Object[]
+                                                                 null;
+                                               returnObj = Class.forName((String) clazz,
+                                                                         true,
+                                                                         URLClassLoader.newInstance(cp == null?
+                                                                                                     new URL[0]:
+                                                                                                     UtilityFunctions.getClasspathURLs(cp),
+                                                                                                    clazz.getClass().getClassLoader())
+                                                                        ).newInstance();
+                                           } else if (clazz instanceof java.lang.reflect.Constructor) {
+                                               Object[] args = context.length == 2?
+                                                                   (Object[]) context[1]:  //args should be passed as Object[]
+                                                                   null;
+                                               returnObj = ((java.lang.reflect.Constructor) clazz).newInstance(args);
+                                           }
+                                           return returnObj;
+                                       });
+        coreFunctions.put("ifunc-ref",
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length == 0 || context.length > 2) {
+                                               return null;
+                                           }
+                                           IFunction ifunc = null;
+                                           Object fn = context[0];
+                                           if (fn instanceof IFunction) {
+                                               ifunc = (IFunction) fn;
+                                           } else if (fn instanceof String) {
+                                               String ns = context.length == 2? (String) context[1]: null;
+                                               ifunc = CompilationUnits.resolveFunction(ns, (String) fn);
+                                           }
+                                           return ifunc;
+                                       });
+        coreFunctions.put("ifunc-invoke",
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length == 0) {
+                                               return null;
+                                           }
+                                           Object obj = context[0];
+                                           Object result = null;
+                                           if (obj instanceof IFunction) {
+                                               IFunction func = (IFunction) obj;
+                                               Object[] _context = new Object[context.length - 1];
+                                               if (_context.length != 0) {
+                                                   System.arraycopy(context, 1, _context, 0, _context.length);
+                                               }
+                                               result = func.invoke(_context, compilationRuntimeContext);
+                                           }
+                                           return result;
+                                       });
+        coreFunctions.put("ifunc-invoke2",
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length == 0 || context.length > 2) {
+                                               return null;
+                                           }
+                                           Object obj = context[0];
+                                           Object result = null;
+                                           if (obj instanceof IFunction) {
+                                               IFunction func = (IFunction) obj;
+                                               Object[] _context = context.length == 2?
+                                                                       (Object[]) context[1]:  //fn args should be passed as Object[]
+                                                                       new Object[0];
+                                               result = func.invoke(_context, compilationRuntimeContext);
+                                           }
+                                           return result;
                                        });
         return coreFunctions;
     }

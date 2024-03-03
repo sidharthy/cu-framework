@@ -255,13 +255,9 @@ public final class UtilityFunctions {
                 continue;
             }
             String _classpath = value.toString().trim();
-            String jarUrl = null;
-            if (_classpath.startsWith("http:") || _classpath.startsWith("https:")) {
-                jarUrl = "jar:" + _classpath + "!/";
-            }
-            else {
-                //we assume the location points to a file on disk
-                jarUrl = "jar:file:/" + _classpath + "!/";
+            String jarUrl = toJarUrl(_classpath);
+            if (jarUrl == null) {
+                continue;
             }
             try {
                 urls.addAll(JarClasspathResolver.resolveClasspathFromJar(new URL(jarUrl)));
@@ -270,5 +266,43 @@ public final class UtilityFunctions {
             }
         }
         return urls.toArray(new URL[0]);
+    }
+
+    public static URL[] getClasspathURLs(Object[] classpath) {
+        if (classpath == null || classpath.length == 0) {
+            return new URL[0];
+        }
+        Set<URL> urls = new HashSet<>();
+        for (Object value: classpath) {
+            if (value == null) {
+                continue;
+            }
+            String _classpath = value.toString().trim();
+            String jarUrl = toJarUrl(_classpath);
+            if (jarUrl == null) {
+                continue;
+            }
+            try {
+                urls.addAll(JarClasspathResolver.resolveClasspathFromJar(new URL(jarUrl)));
+            } catch(Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return urls.toArray(new URL[0]);
+    }
+
+    private static String toJarUrl(String classpath) {
+        if (classpath == null) {
+            return null;
+        }
+        String jarUrl = null;
+        if (classpath.startsWith("http:") || classpath.startsWith("https:")) {
+            jarUrl = "jar:" + classpath + "!/";
+        }
+        else {
+            //we assume the location points to a file on disk
+            jarUrl = "jar:file:/" + classpath + "!/";
+        }
+        return jarUrl;
     }
 }
