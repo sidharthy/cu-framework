@@ -1461,13 +1461,13 @@ final class DefaultPlatformFunctions {
                                                    Object[] cp = context.length == 2?
                                                                      (Object[]) context[1]:  //classpath should be passed as Object[]
                                                                      null;
-                                                   returnClass = Class.forName(className,
-                                                                               true,
-                                                                               URLClassLoader.newInstance(cp == null?
-                                                                                                           new URL[0]:
-                                                                                                           UtilityFunctions.getClasspathURLs(cp),
-                                                                                                          clazz.getClass().getClassLoader())
-                                                                              );
+                                                   returnClass = cp == null?
+                                                                     Class.forName(className):
+                                                                     Class.forName(className,
+                                                                                   true,
+                                                                                   URLClassLoader.newInstance(UtilityFunctions.getClasspathURLs(cp),
+                                                                                                              DefaultPlatformFunctions.class.getClassLoader())
+                                                                                  );
                                                }
                                            } else if (clazz instanceof Class) {
                                                returnClass = (Class) clazz;
@@ -1488,13 +1488,15 @@ final class DefaultPlatformFunctions {
                                                Object[] cp = context.length == 3?
                                                                  (Object[]) context[2]:  //classpath should be passed as Object[]
                                                                  null;
-                                               returnObj = Class.forName((String) clazz,
-                                                                         true,
-                                                                         URLClassLoader.newInstance(cp == null?
-                                                                                                     new URL[0]:
-                                                                                                     UtilityFunctions.getClasspathURLs(cp),
-                                                                                                    clazz.getClass().getClassLoader())
-                                                                        ).getConstructor(argTypes);
+                                               String className = (String) clazz;
+                                               returnObj = (cp == null?
+                                                                Class.forName(className):
+                                                                Class.forName(className,
+                                                                              true,
+                                                                              URLClassLoader.newInstance(UtilityFunctions.getClasspathURLs(cp),
+                                                                                                         DefaultPlatformFunctions.class.getClassLoader())
+                                                                             )
+                                                           ).getConstructor(argTypes);
                                            } else if (clazz instanceof java.lang.reflect.Constructor) {
                                                returnObj = (java.lang.reflect.Constructor) clazz;
                                            }
@@ -1511,13 +1513,15 @@ final class DefaultPlatformFunctions {
                                                Object[] cp = context.length == 2?
                                                                  (Object[]) context[1]:  //classpath should be passed as Object[]
                                                                  null;
-                                               returnObj = Class.forName((String) clazz,
-                                                                         true,
-                                                                         URLClassLoader.newInstance(cp == null?
-                                                                                                     new URL[0]:
-                                                                                                     UtilityFunctions.getClasspathURLs(cp),
-                                                                                                    clazz.getClass().getClassLoader())
-                                                                        ).newInstance();
+                                               String className = (String) clazz;
+                                               returnObj = (cp == null?
+                                                                Class.forName(className):
+                                                                Class.forName(className,
+                                                                              true,
+                                                                              URLClassLoader.newInstance(UtilityFunctions.getClasspathURLs(cp),
+                                                                                                         DefaultPlatformFunctions.class.getClassLoader())
+                                                                             )
+                                                           ).newInstance();
                                            } else if (clazz instanceof java.lang.reflect.Constructor) {
                                                Object[] args = context.length == 2?
                                                                    (Object[]) context[1]:  //args should be passed as Object[]

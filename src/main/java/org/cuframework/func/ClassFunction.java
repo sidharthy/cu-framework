@@ -103,11 +103,14 @@ public class ClassFunction extends GenericCUAccessor implements IFunction {
             }
 
             if (fnClassName != null) {
-                func = Class.forName(fnClassName,
-                                     true,
-                                     URLClassLoader.newInstance(fnCp == null? new URL[0]: UtilityFunctions.getClasspathURLs(fnCp),
-                                                                getClass().getClassLoader())
-                                     ).asSubclass(IFunction.class).newInstance();
+                func = (fnCp == null?
+                            Class.forName(fnClassName):
+                            Class.forName(fnClassName,
+                                          true,
+                                          URLClassLoader.newInstance(UtilityFunctions.getClasspathURLs(fnCp),
+                                                                     getClass().getClassLoader())
+                                         )
+                       ).asSubclass(IFunction.class).newInstance();
             }
         }
         return func != null? func.invoke(context, compilationRuntimeContext): null;
