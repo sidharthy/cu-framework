@@ -7,6 +7,8 @@
       </valueof>
       <get id="EMPTY" default=""/>
       <get id="COMMA" default=","/>
+      <get id="TRUE">$$$true()</get>
+      <get id="FALSE">$$$false()</get>
       <get id="CUNS" default="http://www.cuframework.org"/>  <!-- Default CU namespace -->
       <get id="FNCLSN" default="org.cuframework.func.IFunction"/>  <!-- IFunction class name -->
     </using>
@@ -14,7 +16,7 @@
       <log id="begin-test-msg">
         <valueof default="Starting function tests..."/>
       </log>
-      <assert id="functions-assertions-1" expression="1 and 2 and 3 and 4 and 5 and 6">
+      <assert id="functions-assertions-1" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9">
         <condition id="1" expression="true, false, false, true">
           <get id="not">$$$not(), $$$not(null), $$$not(true), $$$not(false)</get>
         </condition>
@@ -32,6 +34,21 @@
         </condition>
         <condition id="6" expression="null, b, X">
           <get id="ifelsen">$$$ifelsen($$$null()), $$$ifelsen($$$false(), a, b, c), $$$ifelsen($$$false(), true, $$$null(), X)</get>
+        </condition>
+        <condition id="7" expression="false, false, false, true, false, true, false, true, false">
+          <get id="and">
+            $$$and(), $$$and(null), $$$and($$$null()), $$$and(true), $$$and(false), $$$and(true, $$$true()), $$$and(true, $$$false()), $$$and($$$true()), $$$and($$$false())
+          </get>
+        </condition>
+        <condition id="8" expression="false, false, false, true, false, true, true, true, false">
+          <get id="or">
+            $$$or(), $$$or(null), $$$or($$$null()), $$$or(true), $$$or(false), $$$or(true, $$$true()), $$$or(true, $$$false()), $$$or($$$true()), $$$or($$$false(), $$$false())
+          </get>
+        </condition>
+        <condition id="9" expression="false, true, true">
+          <get id="and-or-not">
+            $$$or($$$or(), $$$or(null), $$$or($$$null())), $$$and($$$or(true), $$$not($$$or(false)), $$$or(true, $$$true())), $$$not($$$and(true, $$$false(), $$$or($$$true())))
+          </get>
         </condition>
       </assert>
       <assert id="functions-assertions-2" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8">
@@ -137,7 +154,7 @@
           </select>
         </condition>
       </assert>
-      <assert id="functions-assertions-4" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8">
+      <assert id="functions-assertions-4" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9 and 10">
         <condition id="1" expression="abcdef, abcdef, abcdef, bcdef, bcdef">
           <get>
             $$$substring(abcdef), $$$substring(abcdef, 0), $$$substring(abcdef, 0, 6), $$$substring(abcdef,1,), $$$substring(abcdef,1,-1)
@@ -176,6 +193,16 @@
         <condition id="8" expression="null, abcdef %s, abcdef ijk, a:b">
           <get>
             $$$str-format(), $$$str-format(abcdef %s), $$$str-format(abcdef %s, ijk), $$$str-format(%s:%s, a, b)
+          </get>
+        </condition>
+        <condition id="9" expression="b, c, null, 5, null">
+          <get>
+            $$$str-charat(abcde, 1), $$$str-charat(abcde, $$$int(2)), $$$str-charat(abcde,), $$$length($$$str-tochararray(abcde)), $$$str-tochararray()
+          </get>
+        </condition>
+        <condition id="10" expression="true, false">
+          <get>
+            $$$equals($$$str-charat(abcde, 4), $$$str-charat(e, 0)), $$$equals($$$str-charat(abcde, 4), e)
           </get>
         </condition>
       </assert>
@@ -259,6 +286,115 @@
           <get>
             $$$ifunc-invoke($$$ifunc-ref(int), 2), $$$ifunc-invoke($$$ifunc-ref(float,), 3), $$$ifunc-invoke2($$$ifunc-ref(double, $CUNS), $$$array(5)), $$$ifunc-invoke2($$$ifunc-ref(true))
           </get>
+        </condition>
+      </assert>
+      <assert id="functions-assertions-7" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9">
+        <condition id="1" expression="true, true, 2">
+          <get>
+            $$$instanceof($$$tolist($$$array(1,2,3)), java.util.List), $$$instanceof($$$toset($$$array(1,2,3)), java.util.Set), $$$array-item($$$toarray($$$tolist($$$array(1,2,3))),1)
+          </get>
+        </condition>
+        <condition id="2" expression="3, 3">
+          <get>
+            $$$length($$$toset($$$array(1,2,2,3,3,3))), $$$array-item($$$toarray($$$tolist($$$toset($$$array(1,2,1,1,3,3)))),2)
+          </get>
+        </condition>
+        <condition id="3" expression="3, 5">
+          <get>
+            $$$length($$$toset($$$array-oftype($$$class(int),$$$int(1),$$$int(2),$$$int(2),$$$int(3),$$$int(3)))), $$$length($$$toset($$$str-split(12233aabb)))
+          </get>
+        </condition>
+        <condition id="4" expression="1, 1, 2">
+          <select>
+            $$$length($$$toset($$$array-oftype($Z, $TRUE, $TRUE))), $$$length($$$toset($$$array-oftype($Z, $FALSE, $FALSE))), $$$length($$$toset($$$array-oftype($Z, $TRUE, $FALSE)))
+            <using>
+              <get id="Z">$$$class(boolean)</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="5" expression="3, 2, 2, 7, 2, 3, 1, 2, 3, 3, 3">
+          <select>
+            $$$length($sO), $$$length($sZ), $$$length($sZ2), $$$length($sC), $$$length($sB), $$$length($sS), $$$length($sI), $$$length($sI2), $$$length($sJ), $$$length($sF), $$$length($sD)
+            <using>
+              <get id="sO">$$$toset($$$array(abc, def, ghi, abc))</get>
+              <get id="sZ">$$$toset($$$array-oftype($$$class(boolean),$TRUE, $TRUE, $FALSE, $FALSE, $TRUE))</get>
+              <get id="sZ2">$$$toset($$$array-oftype($$$class(boolean),$TRUE, $TRUE, $FALSE, $FALSE, $TRUE,))</get>
+              <get id="sC">$$$toset($$$str-tochararray(abcdefabg))</get>
+              <get id="sB">$$$toset($$$array-oftype($$$class(byte), $$$byte(2), $$$byte(3), $$$byte(2)))</get>
+              <get id="sS">$$$toset($$$array-oftype($$$class(short), $$$short(1), $$$short(2), $$$short(3), $$$short(1)))</get>
+              <get id="sI">$$$toset($$$array-oftype($$$class(int), $$$int(2), $$$int(2), $$$int(2)))</get>
+              <get id="sI2">$$$toset($$$array-oftype($$$class(int), $$$int(2), $$$int(2), $$$int(2),,,,,,,,,))</get>
+              <get id="sJ">$$$toset($$$array-oftype($$$class(long), $$$long(2), $$$long(3), $$$long(3), $$$long(4)))</get>
+              <get id="sF">$$$toset($$$array-oftype($$$class(float), $$$float(2.0), $$$float(3.0), $$$float(3), $$$float(4)))</get>
+              <get id="sD">$$$toset($$$array-oftype($$$class(double), $$$double(2.0), $$$double(3.0), $$$double(3), $$$double(4)))</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="6" expression="4, 5, 9, 3, 4, 3, 4, 4, 4">
+          <select>
+            $$$length($sO), $$$length($sZ), $$$length($sC), $$$length($sB), $$$length($sS), $$$length($sI), $$$length($sJ), $$$length($sF), $$$length($sD)
+            <using>
+              <get id="sO">$$$tolist($$$array(abc, def, ghi, abc))</get>
+              <get id="sZ">$$$tolist($$$array-oftype($$$class(boolean),$TRUE, $TRUE, $FALSE, $FALSE, $TRUE))</get>
+              <get id="sC">$$$tolist($$$str-tochararray(abcdefabg))</get>
+              <get id="sB">$$$tolist($$$array-oftype($$$class(byte), $$$byte(2), $$$byte(3), $$$byte(2)))</get>
+              <get id="sS">$$$tolist($$$array-oftype($$$class(short), $$$short(1), $$$short(2), $$$short(3), $$$short(1)))</get>
+              <get id="sI">$$$tolist($$$array-oftype($$$class(int), $$$int(2), $$$int(2), $$$int(2)))</get>
+              <get id="sJ">$$$tolist($$$array-oftype($$$class(long), $$$long(2), $$$long(3), $$$long(3), $$$long(4)))</get>
+              <get id="sF">$$$tolist($$$array-oftype($$$class(float), $$$float(2.0), $$$float(3.0), $$$float(3), $$$float(4)))</get>
+              <get id="sD">$$$tolist($$$array-oftype($$$class(double), $$$double(2.0), $$$double(3.0), $$$double(3), $$$double(4)))</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="7" expression="3, 2, 2, 7, 2, 3, 1, 2, 3, 3, 3">
+          <select>
+            $$$length($sO), $$$length($sZ), $$$length($sZ2), $$$length($sC), $$$length($sB), $$$length($sS), $$$length($sI), $$$length($sI2), $$$length($sJ), $$$length($sF), $$$length($sD)
+            <using>
+              <get id="sO">$$$toarray($$$toset($$$array(abc, def, ghi, abc)))</get>
+              <get id="sZ">$$$toarray($$$toset($$$array-oftype($$$class(boolean),$TRUE, $TRUE, $FALSE, $FALSE, $TRUE)))</get>
+              <get id="sZ2">$$$toarray($$$toset($$$array-oftype($$$class(boolean),$TRUE, $TRUE, $FALSE, $FALSE, $TRUE,)))</get>
+              <get id="sC">$$$toarray($$$toset($$$str-tochararray(abcdefabg)))</get>
+              <get id="sB">$$$toarray($$$toset($$$array-oftype($$$class(byte), $$$byte(2), $$$byte(3), $$$byte(2))))</get>
+              <get id="sS">$$$toarray($$$toset($$$array-oftype($$$class(short), $$$short(1), $$$short(2), $$$short(3), $$$short(1))))</get>
+              <get id="sI">$$$toarray($$$toset($$$array-oftype($$$class(int), $$$int(2), $$$int(2), $$$int(2))))</get>
+              <get id="sI2">$$$toarray($$$toset($$$array-oftype($$$class(int), $$$int(2), $$$int(2), $$$int(2),,,,,,,,,)))</get>
+              <get id="sJ">$$$toarray($$$toset($$$array-oftype($$$class(long), $$$long(2), $$$long(3), $$$long(3), $$$long(4))))</get>
+              <get id="sF">$$$toarray($$$toset($$$array-oftype($$$class(float), $$$float(2.0), $$$float(3.0), $$$float(3), $$$float(4))))</get>
+              <get id="sD">$$$toarray($$$toset($$$array-oftype($$$class(double), $$$double(2.0), $$$double(3.0), $$$double(3), $$$double(4))))</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="8" expression="4, 5, 9, 3, 4, 3, 4, 4, 4">
+          <select>
+            $$$length($sO), $$$length($sZ), $$$length($sC), $$$length($sB), $$$length($sS), $$$length($sI), $$$length($sJ), $$$length($sF), $$$length($sD)
+            <using>
+              <get id="sO">$$$toarray($$$tolist($$$array(abc, def, ghi, abc)))</get>
+              <get id="sZ">$$$toarray($$$tolist($$$array-oftype($$$class(boolean),$TRUE, $TRUE, $FALSE, $FALSE, $TRUE)))</get>
+              <get id="sC">$$$toarray($$$tolist($$$str-tochararray(abcdefabg)))</get>
+              <get id="sB">$$$toarray($$$tolist($$$array-oftype($$$class(byte), $$$byte(2), $$$byte(3), $$$byte(2))))</get>
+              <get id="sS">$$$toarray($$$tolist($$$array-oftype($$$class(short), $$$short(1), $$$short(2), $$$short(3), $$$short(1))))</get>
+              <get id="sI">$$$toarray($$$tolist($$$array-oftype($$$class(int), $$$int(2), $$$int(2), $$$int(2))))</get>
+              <get id="sJ">$$$toarray($$$tolist($$$array-oftype($$$class(long), $$$long(2), $$$long(3), $$$long(3), $$$long(4))))</get>
+              <get id="sF">$$$toarray($$$tolist($$$array-oftype($$$class(float), $$$float(2.0), $$$float(3.0), $$$float(3), $$$float(4))))</get>
+              <get id="sD">$$$toarray($$$tolist($$$array-oftype($$$class(double), $$$double(2.0), $$$double(3.0), $$$double(3), $$$double(4))))</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="9" expression="4, 5, 9, 3, 4, 3, 4, 4, 4">
+          <select>
+            $$$length($sO), $$$length($sZ), $$$length($sC), $$$length($sB), $$$length($sS), $$$length($sI), $$$length($sJ), $$$length($sF), $$$length($sD)
+            <using>
+              <get id="sO">$$$toarray($$$array(abc, def, ghi, abc))</get>
+              <get id="sZ">$$$toarray($$$array-oftype($$$class(boolean),$TRUE, $TRUE, $FALSE, $FALSE, $TRUE))</get>
+              <get id="sC">$$$toarray($$$str-tochararray(abcdefabg))</get>
+              <get id="sB">$$$toarray($$$array-oftype($$$class(byte), $$$byte(2), $$$byte(3), $$$byte(2)))</get>
+              <get id="sS">$$$toarray($$$array-oftype($$$class(short), $$$short(1), $$$short(2), $$$short(3), $$$short(1)))</get>
+              <get id="sI">$$$toarray($$$array-oftype($$$class(int), $$$int(2), $$$int(2), $$$int(2)))</get>
+              <get id="sJ">$$$toarray($$$array-oftype($$$class(long), $$$long(2), $$$long(3), $$$long(3), $$$long(4)))</get>
+              <get id="sF">$$$toarray($$$array-oftype($$$class(float), $$$float(2.0), $$$float(3.0), $$$float(3), $$$float(4)))</get>
+              <get id="sD">$$$toarray($$$array-oftype($$$class(double), $$$double(2.0), $$$double(3.0), $$$double(3), $$$double(4)))</get>
+            </using>
+          </select>
         </condition>
       </assert>
       <log id="end-test-msg">

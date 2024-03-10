@@ -41,12 +41,15 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -668,6 +671,129 @@ final class DefaultPlatformFunctions {
                                            }
                                            return size != -1? size: null;
                                        });
+        coreFunctions.put("tolist",  //for primitive arrays this will return list of their object equivalents
+                           (context, compilationRuntimeContext) -> {
+                                           Object target = context.length == 1? context[0]: null;
+                                           List list = null;
+                                           if (target instanceof List) {
+                                               list = (List) target;
+                                           } else if (target != null && target.getClass().isArray()) {
+                                               if (target instanceof Object[]) {  //since mostly cus would be dealing with Object arrays
+                                                                                  //so checking first for Object[] would be most optimized
+                                                   list = Arrays.asList((Object[]) target);
+                                               } else if (target instanceof boolean[]) {
+                                                   list = new ArrayList<Boolean>();
+                                                   for (boolean x : (boolean[]) target) {
+                                                       list.add(x);
+                                                   }
+                                               } else if (target instanceof char[]) {
+                                                   list = new ArrayList<Character>();
+                                                   for (char x : (char[]) target) {
+                                                       list.add(x);
+                                                   }
+                                               } else if (target instanceof byte[]) {
+                                                   list = new ArrayList<Byte>();
+                                                   for (byte x : (byte[]) target) {
+                                                       list.add(x);
+                                                   }
+                                               } else if (target instanceof short[]) {
+                                                   list = new ArrayList<Short>();
+                                                   for (short x : (short[]) target) {
+                                                       list.add(x);
+                                                   }
+                                               } else if (target instanceof int[]) {
+                                                   list = new ArrayList<Integer>();
+                                                   for (int x : (int[]) target) {
+                                                       list.add(x);
+                                                   }
+                                               } else if (target instanceof long[]) {
+                                                   list = new ArrayList<Long>();
+                                                   for (long x : (long[]) target) {
+                                                       list.add(x);
+                                                   }
+                                               } else if (target instanceof float[]) {
+                                                   list = new ArrayList<Float>();
+                                                   for (float x : (float[]) target) {
+                                                       list.add(x);
+                                                   }
+                                               } else if (target instanceof double[]) {
+                                                   list = new ArrayList<Double>();
+                                                   for (double x : (double[]) target) {
+                                                       list.add(x);
+                                                   }
+                                               }
+                                           } else if (target instanceof Collection) {
+                                               list = new ArrayList((Collection) target);
+                                           }
+                                           return list;
+                                       });
+        coreFunctions.put("toset",  //for primitive arrays this will return set of their object equivalents
+                           (context, compilationRuntimeContext) -> {
+                                           Object target = context.length == 1? context[0]: null;
+                                           Set set = null;
+                                           if (target instanceof Set) {
+                                               set = (Set) target;
+                                           } else if (target != null && target.getClass().isArray()) {
+                                               if (target instanceof Object[]) {  //since mostly cus would be dealing with Object arrays
+                                                                                  //so checking first for Object[] would be most optimized
+                                                   set = new HashSet(Arrays.asList((Object[]) target));
+                                               } else if (target instanceof boolean[]) {
+                                                   set = new HashSet<Boolean>();
+                                                   for (boolean x : (boolean[]) target) {
+                                                       set.add(x);
+                                                   }
+                                               } else if (target instanceof char[]) {
+                                                   set = new HashSet<Character>();
+                                                   for (char x : (char[]) target) {
+                                                       set.add(x);
+                                                   }
+                                               } else if (target instanceof byte[]) {
+                                                   set = new HashSet<Byte>();
+                                                   for (byte x : (byte[]) target) {
+                                                       set.add(x);
+                                                   }
+                                               } else if (target instanceof short[]) {
+                                                   set = new HashSet<Short>();
+                                                   for (short x : (short[]) target) {
+                                                       set.add(x);
+                                                   }
+                                               } else if (target instanceof int[]) {
+                                                   set = new HashSet<Integer>();
+                                                   for (int x : (int[]) target) {
+                                                       set.add(x);
+                                                   }
+                                               } else if (target instanceof long[]) {
+                                                   set = new HashSet<Long>();
+                                                   for (long x : (long[]) target) {
+                                                       set.add(x);
+                                                   }
+                                               } else if (target instanceof float[]) {
+                                                   set = new HashSet<Float>();
+                                                   for (float x : (float[]) target) {
+                                                       set.add(x);
+                                                   }
+                                               } else if (target instanceof double[]) {
+                                                   set = new HashSet<Double>();
+                                                   for (double x : (double[]) target) {
+                                                       set.add(x);
+                                                   }
+                                               }
+                                           } else if (target instanceof Collection) {
+                                               set = new HashSet((Collection) target);
+                                           }
+                                           return set;
+                                       });
+        coreFunctions.put("toarray",
+                           (context, compilationRuntimeContext) -> {
+                                           Object target = context.length == 1? context[0]: null;
+                                           Object array = null;
+                                           if (target instanceof Collection) {
+                                               array = ((Collection) target).toArray();
+                                           } else if (target != null && target.getClass().isArray()) {
+                                               array = target;
+                                           }
+                                           return array;
+                                       });
         coreFunctions.put("array",
                           (context, compilationRuntimeContext) -> {
                                            return context;  //return context array as is
@@ -1142,6 +1268,26 @@ final class DefaultPlatformFunctions {
                                            }
                                            return strBuilder.toString();
                                        });
+        coreFunctions.put("str-charat",
+                          (context, compilationRuntimeContext) -> {
+                                           if (context.length != 2) {
+                                               return null;
+                                           }
+                                           String str = (String) context[0];
+                                           if (str == null) {
+                                               return null;
+                                           }
+                                           Object _index = context[1];
+                                           int index = -1;
+                                           try {
+                                               if (_index != null) {
+                                                   index = Integer.parseInt(_index.toString());
+                                               }
+                                           } catch (NumberFormatException nfe) {
+                                               //invalid input
+                                           }
+                                           return index >= 0 && index < str.length()? str.charAt(index): null;
+                                       });
         coreFunctions.put("str-format",
                           (context, compilationRuntimeContext) -> {
                                            String strFormat = context.length > 0? (String) context[0]: null;
@@ -1150,6 +1296,11 @@ final class DefaultPlatformFunctions {
                                            }
                                            Object[] args = Arrays.copyOfRange(context, 1, context.length);
                                            return String.format(strFormat, args);
+                                       });
+        coreFunctions.put("str-tochararray",
+                          (context, compilationRuntimeContext) -> {
+                                           String str = context.length == 1? (String) context[0]: null;
+                                           return str != null? str.toCharArray(): null;
                                        });
         coreFunctions.put("str-tobytes",
                           (context, compilationRuntimeContext) -> {
@@ -1278,6 +1429,30 @@ final class DefaultPlatformFunctions {
         coreFunctions.put("isnull",
                           (context, compilationRuntimeContext) -> context.length == 0 ||
                                                                   (context.length == 1 && context[0] == null));
+        coreFunctions.put("and",
+                          (context, compilationRuntimeContext) -> {
+                                           boolean returnValue = context.length != 0;
+                                           for (int i = 0; i < context.length; i++) {
+                                               returnValue &= (context[i] instanceof Boolean && Boolean.valueOf((Boolean) context[i])) ||
+                                                              (context[i] != null && Boolean.valueOf(context[i].toString().toLowerCase()));
+                                               if (!returnValue) {
+                                                   break;
+                                               }
+                                           }
+                                           return returnValue;
+                                       });
+        coreFunctions.put("or",
+                          (context, compilationRuntimeContext) -> {
+                                           boolean returnValue = false;
+                                           for (int i = 0; i < context.length; i++) {
+                                               returnValue |= (context[i] instanceof Boolean && Boolean.valueOf((Boolean) context[i])) ||
+                                                              (context[i] != null && Boolean.valueOf(context[i].toString().toLowerCase()));
+                                               if (returnValue) {
+                                                   break;
+                                               }
+                                           }
+                                           return returnValue;
+                                       });
         coreFunctions.put("not",
                           (context, compilationRuntimeContext) -> context.length == 0 || (context.length == 1 && context[0] == null)?
                                                                       true:
