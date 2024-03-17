@@ -239,10 +239,12 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
         if (stream == null) {
             return null;
         }
-        String bytes = (String) requestContext.get(PARAM_BYTES);
+        Object bytes = requestContext.get(PARAM_BYTES);
         if (stream instanceof FileInputStream) {
             if (bytes != null) {
-                int _bytes = Integer.parseInt(bytes);
+                int _bytes = bytes instanceof Number?
+                                 ((Number) bytes).intValue():
+                                 Integer.parseInt((String) bytes);  //bytes is expected to be either a Number or a String
                 byte[] buffer = new byte[_bytes];
                 int bytesRead = ((FileInputStream) stream).read(buffer, 0, buffer.length);
                 byte[] filledBuffer = bytesRead == -1? null: (bytesRead == buffer.length? buffer: new byte[bytesRead]);
@@ -255,7 +257,9 @@ public class FileIO extends HeadlessExecutableGroup implements IExecutable {
             return byteRead == -1? null: byteRead;
         } else if (stream instanceof BufferedReader) {
             if (bytes != null) {
-                int _chars = Integer.parseInt(bytes);
+                int _chars = bytes instanceof Number?
+                                 ((Number) bytes).intValue():
+                                 Integer.parseInt((String) bytes);  //bytes is expected to be either a Number or a String
                 char[] buffer = new char[_chars];
                 int charsRead = ((BufferedReader) stream).read(buffer, 0, buffer.length);
                 char[] filledBuffer = charsRead == -1? null: (charsRead == buffer.length? buffer: new char[charsRead]);
