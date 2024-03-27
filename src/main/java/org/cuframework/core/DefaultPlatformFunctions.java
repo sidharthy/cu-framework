@@ -1427,8 +1427,17 @@ final class DefaultPlatformFunctions {
         coreFunctions.put("null",
                           (context, compilationRuntimeContext) -> null);
         coreFunctions.put("isnull",
-                          (context, compilationRuntimeContext) -> context.length == 0 ||
-                                                                  (context.length == 1 && context[0] == null));
+                          (context, compilationRuntimeContext) -> {
+                                           //this function returns true iff all object values inside the context array are null
+                                           boolean isNull = true;
+                                           for (Object obj: context) {
+                                               isNull &= obj == null;
+                                               if (!isNull) {
+                                                   break;
+                                               }
+                                           }
+                                           return isNull;
+                                       });
         coreFunctions.put("and",
                           (context, compilationRuntimeContext) -> {
                                            boolean returnValue = context.length != 0;

@@ -51,7 +51,7 @@
           </get>
         </condition>
       </assert>
-      <assert id="functions-assertions-2" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8">
+      <assert id="functions-assertions-2" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9">
         <condition id="1" expression="15, 15, 6">
           <get>$$$sum(1,2,3,4,5), $$$sum($$$array(1,2,3,4,5)), $$$sum(6)</get>
         </condition>
@@ -84,6 +84,11 @@
         <condition id="8" expression="false, true">
           <get>
             $$$equals(1,$$$int(1)), $$$equals($$$int(1),$$$int(1))
+          </get>
+        </condition>
+        <condition id="9" expression="true, true, false, false, true, true, false, true">
+          <get>
+            $$$isnull(), $$$isnull(,), $$$isnull(1), $$$isnull(1,), $$$isnull(,,,), $$$isnull(,,$$$null()), $$$isnull($$$null(),,$), $$$isnull($$$null(),,$unknown-var)
           </get>
         </condition>
       </assert>
