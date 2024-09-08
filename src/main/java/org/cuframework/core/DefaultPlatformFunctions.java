@@ -1497,10 +1497,10 @@ final class DefaultPlatformFunctions {
                           (context, expressionRuntimeContext) -> null);
         coreFunctions.put("isnull",
                           (context, expressionRuntimeContext) -> {
-                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            //this function returns true iff all object values inside the context array are null
                                            boolean isNull = true;
                                            for (Object obj: context) {
+                                               obj = IFunction.val(obj, expressionRuntimeContext);
                                                isNull &= obj == null;
                                                if (!isNull) {
                                                    break;

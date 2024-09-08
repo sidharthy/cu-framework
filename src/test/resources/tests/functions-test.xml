@@ -412,7 +412,7 @@
           </select>
         </condition>
       </assert>
-      <assert id="functions-assertions-8" expression="1 and 2 and 3 and 4">
+      <assert id="functions-assertions-8" expression="1 and 2 and 3 and 4 and 5">
         <condition id="1" expression="\[Ljava.lang.String;">
           <select id="the-else-part-of-ifelse-should-never-execute-and-would-result-into-a-classcastexception">
             $$$typeof($$$ifelse($$$instanceof($str-array, $$$class([Ljava.lang.String;)), $str-array, $$$str-split($str-array,$COMMA)))
@@ -440,6 +440,14 @@
         <condition id="4" expression="true">
           <select id="the-or-should-shortcircuit-and-its-the-last-param-should-not-execute-or-it-will-result-into-a-classcastexception">
             $$$or($$$false(), $$$false(), $$$true(), $$$str-split($str-array,$COMMA))
+            <using>
+              <get id="str-array">$$$str-split(a|b|c|d|e,|)</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="5" expression="false, false">
+          <select id="the-isnull-should-shortcircuit-and-its-the-last-param-should-not-execute-or-it-will-result-into-a-classcastexception">
+            $$$isnull($$$null(), $unknown-var,, 1, $$$str-split($str-array,$COMMA)), $$$isnull(,,,, 1, $$$str-split($str-array,$COMMA))
             <using>
               <get id="str-array">$$$str-split(a|b|c|d|e,|)</get>
             </using>
