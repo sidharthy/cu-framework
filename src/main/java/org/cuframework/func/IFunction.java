@@ -28,7 +28,8 @@
 
 package org.cuframework.func;
 
-import org.cuframework.core.CompilationRuntimeContext;
+import org.cuframework.el.EL.Expression;
+import org.cuframework.el.ExpressionRuntimeContext;
 
 /**
  * Functional interface of Compilation Units Framework's function library.
@@ -37,5 +38,34 @@ import org.cuframework.core.CompilationRuntimeContext;
  */
 @FunctionalInterface
 public interface IFunction { 
-    Object invoke(Object[] context, CompilationRuntimeContext compilationRuntimeContext) throws Exception;
+    Object invoke(Object[] context, ExpressionRuntimeContext expressionRuntimeContext) throws Exception;
+
+    /**
+     * Utility method to return the evaluated value of expression if the contextObject param is an instanceof EL.Expression.
+     * This would be useful when the function implementation is such that the actual evaluation of the contextObject is
+     * conditional e.g. an ifelse function might want to defer and doesn't even need to evaluate the else expression when the
+     * if condition is satisfied.
+     */
+    static Object val(Object contextObject, ExpressionRuntimeContext expressionRuntimeContext) throws Exception {
+        Object value = contextObject;
+        if (contextObject instanceof Expression) {
+            value = ((Expression) contextObject).getValue(expressionRuntimeContext);
+        }
+        return value;
+    }
+
+    /**
+     * Utility method to return the evaluated value of expressions if the contextObject array contains instances of EL.Expression.
+     * This would be useful when the function implementation is such that the actual evaluation of the contextObject(s) is to be
+     * made conditional e.g. an ifelse function might want to defer and doesn't even need to evaluate the else expression when the
+     * if condition is satisfied.
+     */
+    static Object[] vals(Object[] contextArray, ExpressionRuntimeContext expressionRuntimeContext) throws Exception {
+        Object[] values = new Object[contextArray.length];
+        int index = 0;
+        for (Object obj: contextArray) {
+            values[index++] = val(obj, expressionRuntimeContext);
+        }
+        return values;
+    }
 }

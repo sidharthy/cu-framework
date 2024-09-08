@@ -51,7 +51,7 @@
           </get>
         </condition>
       </assert>
-      <assert id="functions-assertions-2" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9">
+      <assert id="functions-assertions-2" expression="1 and 2 and 3 and 4 and 5 and 6 and 7 and 8 and 9 and abs and abs2">
         <condition id="1" expression="15, 15, 6">
           <get>$$$sum(1,2,3,4,5), $$$sum($$$array(1,2,3,4,5)), $$$sum(6)</get>
         </condition>
@@ -89,6 +89,16 @@
         <condition id="9" expression="true, true, false, false, true, true, false, true">
           <get>
             $$$isnull(), $$$isnull(,), $$$isnull(1), $$$isnull(1,), $$$isnull(,,,), $$$isnull(,,$$$null()), $$$isnull($$$null(),,$), $$$isnull($$$null(),,$unknown-var)
+          </get>
+        </condition>
+        <condition id="abs" expression="8\.0, 8\.0, 6\.0, 5\.0">
+          <get>
+            $$$abs(8), $$$abs(-8), $$$abs($$$ceil(5.3)), $$$abs($$$floor(5.3))
+          </get>
+        </condition>
+        <condition id="abs2" expression="822\.2, 8\.2, 88, 8, 9, 2">
+          <get>
+            $$$abs($$$double(-822.2)), $$$abs($$$float(8.2)), $$$abs($$$long(-88)), $$$abs($$$int(-8)), $$$abs($$$short(9)), $$$abs($$$byte(-2))
           </get>
         </condition>
       </assert>
@@ -398,6 +408,40 @@
               <get id="sJ">$$$toarray($$$array-oftype($$$class(long), $$$long(2), $$$long(3), $$$long(3), $$$long(4)))</get>
               <get id="sF">$$$toarray($$$array-oftype($$$class(float), $$$float(2.0), $$$float(3.0), $$$float(3), $$$float(4)))</get>
               <get id="sD">$$$toarray($$$array-oftype($$$class(double), $$$double(2.0), $$$double(3.0), $$$double(3), $$$double(4)))</get>
+            </using>
+          </select>
+        </condition>
+      </assert>
+      <assert id="functions-assertions-8" expression="1 and 2 and 3 and 4">
+        <condition id="1" expression="\[Ljava.lang.String;">
+          <select id="the-else-part-of-ifelse-should-never-execute-and-would-result-into-a-classcastexception">
+            $$$typeof($$$ifelse($$$instanceof($str-array, $$$class([Ljava.lang.String;)), $str-array, $$$str-split($str-array,$COMMA)))
+            <using>
+              <get id="str-array">$$$str-split(a|b|c|d|e,|)</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="2" expression="abc, xyz">
+          <select id="the-last-part-of-any-ifelsen-should-not-execute-or-it-would-result-into-a-classcastexception">
+            $$$ifelsen($$$true(), abc, $$$str-split($str-array,$COMMA)), $$$ifelsen($$$false(), $$$null(), xyz, $$$str-split($str-array,$COMMA)) 
+            <using>
+              <get id="str-array">$$$str-split(a|b|c|d|e,|)</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="3" expression="false">
+          <select id="the-and-should-shortcircuit-and-its-the-last-param-should-not-execute-or-it-will-result-into-a-classcastexception">
+            $$$and($$$true(), $$$true(), $$$false(), $$$str-split($str-array,$COMMA))
+            <using>
+              <get id="str-array">$$$str-split(a|b|c|d|e,|)</get>
+            </using>
+          </select>
+        </condition>
+        <condition id="4" expression="true">
+          <select id="the-or-should-shortcircuit-and-its-the-last-param-should-not-execute-or-it-will-result-into-a-classcastexception">
+            $$$or($$$false(), $$$false(), $$$true(), $$$str-split($str-array,$COMMA))
+            <using>
+              <get id="str-array">$$$str-split(a|b|c|d|e,|)</get>
             </using>
           </select>
         </condition>

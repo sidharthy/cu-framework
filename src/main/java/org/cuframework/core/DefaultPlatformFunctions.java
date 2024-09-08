@@ -100,7 +100,8 @@ final class DefaultPlatformFunctions {
     public static Map<String, IFunction> getCoreFunctions() {
         Map<String, IFunction> coreFunctions = new HashMap<String, IFunction>();
         coreFunctions.put("number",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            Number number = null;
                                            try {
@@ -111,7 +112,8 @@ final class DefaultPlatformFunctions {
                                            return number;
                                        });
         coreFunctions.put("byte",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            Byte number = null;
                                            if (input instanceof Byte) {
@@ -128,7 +130,8 @@ final class DefaultPlatformFunctions {
                                            return number;
                                        });
         coreFunctions.put("short",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            Short number = null;
                                            if (input instanceof Short) {
@@ -145,7 +148,8 @@ final class DefaultPlatformFunctions {
                                            return number;
                                        });
         coreFunctions.put("int",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            Integer number = null;
                                            if (input instanceof Integer) {
@@ -162,7 +166,8 @@ final class DefaultPlatformFunctions {
                                            return number;
                                        });
         coreFunctions.put("long",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            Long number = null;
                                            if (input instanceof Long) {
@@ -179,7 +184,8 @@ final class DefaultPlatformFunctions {
                                            return number;
                                        });
         coreFunctions.put("float",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            Float number = null;
                                            if (input instanceof Float) {
@@ -196,7 +202,8 @@ final class DefaultPlatformFunctions {
                                            return number;
                                        });
         coreFunctions.put("double",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            Double number = null;
                                            if (input instanceof Double) {
@@ -213,7 +220,8 @@ final class DefaultPlatformFunctions {
                                            return number;
                                        });
         coreFunctions.put("abs",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            if (input instanceof Double) {
                                                return Math.abs((Double) input);
@@ -223,6 +231,10 @@ final class DefaultPlatformFunctions {
                                                return Math.abs((Integer) input);
                                            } else if (input instanceof Long) {
                                                return Math.abs((Long) input);
+                                           } else if (input instanceof Short) {
+                                               return Math.abs((Short) input);
+                                           } else if (input instanceof Byte) {
+                                               return Math.abs((Byte) input);
                                            } else if (input instanceof String) {
                                                try {
                                                    return Math.abs(Double.parseDouble((String) input));
@@ -233,7 +245,8 @@ final class DefaultPlatformFunctions {
                                            return null;
                                        });
          coreFunctions.put("ceil",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            if (input instanceof Number) {
                                                return Math.ceil(((Number) input).doubleValue());
@@ -247,7 +260,8 @@ final class DefaultPlatformFunctions {
                                            return null;
                                        });
         coreFunctions.put("floor",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1? context[0]: null;
                                            if (input instanceof Number) { 
                                                return Math.floor(((Number) input).doubleValue());
@@ -261,7 +275,8 @@ final class DefaultPlatformFunctions {
                                            return null;
                                        });
         coreFunctions.put("sum",  //mathematical sum of numeric values
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1 &&
                                                           context[0] != null &&
                                                           context[0].getClass().isArray()?
@@ -299,7 +314,8 @@ final class DefaultPlatformFunctions {
                                            return nonNumericInputFound? null: sum;
                                        });
         coreFunctions.put("multiply",  //mathematical multiplication of numeric values
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1 &&
                                                           context[0] != null &&
                                                           context[0].getClass().isArray()?
@@ -337,7 +353,8 @@ final class DefaultPlatformFunctions {
                                            return nonNumericInputFound? null: multiplication;
                                        });
         coreFunctions.put("subtract",  //mathematical subtraction of numeric values
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -390,7 +407,8 @@ final class DefaultPlatformFunctions {
                                            return result;
                                        });
         coreFunctions.put("div",  //mathematical division of numeric values
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -434,7 +452,8 @@ final class DefaultPlatformFunctions {
                                            return result;
                                        });
         coreFunctions.put("mod",  //mathematical modulous of numeric values
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -478,7 +497,8 @@ final class DefaultPlatformFunctions {
                                            return result;
                                        });
         coreFunctions.put("lt",  //boolean lessthan (<) operator of numeric values
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -522,7 +542,8 @@ final class DefaultPlatformFunctions {
                                            return result;
                                        });
         coreFunctions.put("lte",  //boolean lessthanOrequals (<=) operator of numeric values
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -566,7 +587,8 @@ final class DefaultPlatformFunctions {
                                            return result;
                                        });
         coreFunctions.put("gt",  //boolean greaterthan (>) operator of numeric values
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -610,7 +632,8 @@ final class DefaultPlatformFunctions {
                                            return result;
                                        });
         coreFunctions.put("gte",  //boolean greaterthanOrequals (>=) operator of numeric values
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -654,7 +677,8 @@ final class DefaultPlatformFunctions {
                                            return result;
                                        });
         coreFunctions.put("length",
-                           (context, compilationRuntimeContext) -> {
+                           (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object target = context.length == 1? context[0]: context;
                                            int size = -1;
                                            if (target instanceof List) {
@@ -672,7 +696,8 @@ final class DefaultPlatformFunctions {
                                            return size != -1? size: null;
                                        });
         coreFunctions.put("tolist",  //for primitive arrays this will return list of their object equivalents
-                           (context, compilationRuntimeContext) -> {
+                           (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object target = context.length == 1? context[0]: null;
                                            List list = null;
                                            if (target instanceof List) {
@@ -728,7 +753,8 @@ final class DefaultPlatformFunctions {
                                            return list;
                                        });
         coreFunctions.put("toset",  //for primitive arrays this will return set of their object equivalents
-                           (context, compilationRuntimeContext) -> {
+                           (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object target = context.length == 1? context[0]: null;
                                            Set set = null;
                                            if (target instanceof Set) {
@@ -784,7 +810,8 @@ final class DefaultPlatformFunctions {
                                            return set;
                                        });
         coreFunctions.put("toarray",
-                           (context, compilationRuntimeContext) -> {
+                           (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object target = context.length == 1? context[0]: null;
                                            Object array = null;
                                            if (target instanceof Collection) {
@@ -795,11 +822,12 @@ final class DefaultPlatformFunctions {
                                            return array;
                                        });
         coreFunctions.put("array",
-                          (context, compilationRuntimeContext) -> {
-                                           return context;  //return context array as is
+                          (context, expressionRuntimeContext) -> {
+                                           return IFunction.vals(context, expressionRuntimeContext);  //return context array as is
                                        });
         coreFunctions.put("array-oftype",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0) {
                                                return null;
                                            }
@@ -837,7 +865,8 @@ final class DefaultPlatformFunctions {
                                            return array;
                                        });
         coreFunctions.put("array-oftypeandsize",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -855,7 +884,8 @@ final class DefaultPlatformFunctions {
                                            return Array.newInstance(clazz, size);
                                        });
         coreFunctions.put("array-copyofrange",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            //Valid context data is:
                                            //    context array should have max length of 3
                                            //    0th index = array to be copied
@@ -907,7 +937,8 @@ final class DefaultPlatformFunctions {
                                            return result;
                                        });
         coreFunctions.put("array-contains",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            //Valid context data is:
                                            //    context array should have max length of 2
                                            //    0th index = array to be searched in
@@ -934,7 +965,8 @@ final class DefaultPlatformFunctions {
                                                   null;
                                        });
         coreFunctions.put("array-item",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            //Valid context data is:
                                            //    context array should have max length of 2
                                            //    0th index = source array
@@ -962,7 +994,8 @@ final class DefaultPlatformFunctions {
                                                   null;
                                        });
         coreFunctions.put("array-sort",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object input = context.length == 1 &&
                                                           context[0] != null &&
                                                           context[0].getClass().isArray()?
@@ -993,7 +1026,8 @@ final class DefaultPlatformFunctions {
                                            return input;
                                        });
         coreFunctions.put("map-contains",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            //Valid context data is:
                                            //    context array should have max length of 2
                                            //    0th index = source map
@@ -1009,7 +1043,8 @@ final class DefaultPlatformFunctions {
                                            return collection instanceof Map? ((Map) collection).containsKey(key): null;
                                        });
         coreFunctions.put("map-item",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            //Valid context data is:
                                            //    context array should have max length of 2
                                            //    0th index = source map
@@ -1025,46 +1060,54 @@ final class DefaultPlatformFunctions {
                                            return collection instanceof Map? ((Map) collection).get(key): null;
                                        });
         coreFunctions.put("file-new",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object path = context.length == 1? context[0]: null;
                                            return path == null? null:
                                                     (path instanceof String? new File((String) path):
                                                      path instanceof URI? new File((URI) path): null);
                                        });
         coreFunctions.put("file-name",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.getName(): null;
                                        });
         coreFunctions.put("file-parent",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.getParent(): null;
                                        });
         coreFunctions.put("file-path",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.getPath(): null;
                                        });
         coreFunctions.put("file-size",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.length(): null;
                                        });
         coreFunctions.put("file-exists",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.exists(): null;
                                        });
         coreFunctions.put("file-isdirectory",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            File f = context.length == 1? (File) context[0]: null;
                                            return f != null? f.isDirectory(): null;
                                        });
         coreFunctions.put("random",
-                          (context, compilationRuntimeContext) -> Math.random());
+                          (context, expressionRuntimeContext) -> Math.random());
         coreFunctions.put("random-int",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object origin = context.length > 1? context[0]: null;
                                            Object bound = context.length > 1? context[1]: context.length > 0? context[0]: null;
                                            boolean originIsValidNum = origin != null, boundIsValidNum = bound != null;
@@ -1086,7 +1129,8 @@ final class DefaultPlatformFunctions {
                                                   boundIsValidNum? tlr.nextInt(Integer.parseInt(bound.toString())): tlr.nextInt();
                                        });
         coreFunctions.put("random-long",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object origin = context.length > 1? context[0]: null;
                                            Object bound = context.length > 1? context[1]: context.length > 0? context[0]: null;
                                            boolean originIsValidNum = origin != null, boundIsValidNum = bound != null;
@@ -1108,7 +1152,8 @@ final class DefaultPlatformFunctions {
                                                   boundIsValidNum? tlr.nextLong(Long.parseLong(bound.toString())): tlr.nextLong();
                                        });
         coreFunctions.put("random-double",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object origin = context.length > 1? context[0]: null;
                                            Object bound = context.length > 1? context[1]: context.length > 0? context[0]: null;
                                            boolean originIsValidNum = origin != null, boundIsValidNum = bound != null;
@@ -1130,9 +1175,10 @@ final class DefaultPlatformFunctions {
                                                   boundIsValidNum? tlr.nextDouble(Double.parseDouble(bound.toString())): tlr.nextDouble();
                                        });
         coreFunctions.put("uuid",
-                          (context, compilationRuntimeContext) -> UUID.randomUUID());
+                          (context, expressionRuntimeContext) -> UUID.randomUUID());
         coreFunctions.put("str-replace", 
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String str = context.length > 0? (String) context[0]: null;
                                            if (str == null || context.length != 3) {
                                                return str;
@@ -1142,7 +1188,8 @@ final class DefaultPlatformFunctions {
                                            return str.replace(target, replacement);
                                        });
         coreFunctions.put("str-replaceregex",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String str = context.length > 0? (String) context[0]: null;
                                            if (str == null || context.length != 3) {
                                                return str;
@@ -1152,7 +1199,8 @@ final class DefaultPlatformFunctions {
                                            return str.replaceAll(regex, replacement);
                                        });
         coreFunctions.put("str-startswith",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length != 2) {
                                                return null;  //should we return false?
                                            }
@@ -1164,7 +1212,8 @@ final class DefaultPlatformFunctions {
                                            return str.startsWith(prefix);
                                        });
         coreFunctions.put("str-endswith",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length != 2) {
                                                return null;  //should we return false?
                                            }
@@ -1176,7 +1225,8 @@ final class DefaultPlatformFunctions {
                                            return str.endsWith(suffix);
                                        });
         coreFunctions.put("str-contains",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length != 2) {
                                                return null;  //should we return false?
                                            }
@@ -1188,7 +1238,8 @@ final class DefaultPlatformFunctions {
                                            return str.contains(substring);
                                        });
         coreFunctions.put("str-indexof",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length != 2) {
                                                return null;  //should we return -1?
                                            }
@@ -1200,7 +1251,8 @@ final class DefaultPlatformFunctions {
                                            return str.indexOf(substring);
                                        });
         coreFunctions.put("str-matches",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length != 2) {
                                                return null;  //should we return false?
                                            }
@@ -1212,22 +1264,26 @@ final class DefaultPlatformFunctions {
                                            return str.matches(regex);
                                        });
         coreFunctions.put("str-trim",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String str = context.length == 1? (String) context[0]: null;
                                            return str != null? str.trim(): null;
                                        });
         coreFunctions.put("str-uppercase",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String str = context.length == 1? (String) context[0]: null;
                                            return str != null? str.toUpperCase(): null;
                                        });
         coreFunctions.put("str-lowercase",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String str = context.length == 1? (String) context[0]: null;
                                            return str != null? str.toLowerCase(): null;
                                        });
         coreFunctions.put("str-split",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 3) {
                                                return null;
                                            }
@@ -1247,7 +1303,8 @@ final class DefaultPlatformFunctions {
                                            return str.split(delimiterRegex, limit);
                                        });
         coreFunctions.put("str-join",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String delimiter = context.length > 0? (String) context[0]: null;
                                            if (context.length <= 1) {
                                                return null;  //should we return an empty String?
@@ -1269,7 +1326,8 @@ final class DefaultPlatformFunctions {
                                            return strBuilder.toString();
                                        });
         coreFunctions.put("str-charat",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length != 2) {
                                                return null;
                                            }
@@ -1289,7 +1347,8 @@ final class DefaultPlatformFunctions {
                                            return index >= 0 && index < str.length()? str.charAt(index): null;
                                        });
         coreFunctions.put("str-format",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String strFormat = context.length > 0? (String) context[0]: null;
                                            if (strFormat == null || context.length < 2) {
                                                return strFormat;
@@ -1298,24 +1357,28 @@ final class DefaultPlatformFunctions {
                                            return String.format(strFormat, args);
                                        });
         coreFunctions.put("str-tochararray",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String str = context.length == 1? (String) context[0]: null;
                                            return str != null? str.toCharArray(): null;
                                        });
         coreFunctions.put("str-tobytes",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String str = context.length == 1? (String) context[0]: null;
                                            return str != null? str.getBytes(): null;
                                        });
         coreFunctions.put("str-frombytes",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            return context.length == 1?
                                                       (context[0] instanceof byte[]? new String((byte[]) context[0]):
                                                        context[0] instanceof char[]? new String((char[]) context[0]): null)
                                                       : null;
                                        });
         coreFunctions.put("str-todate",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -1329,12 +1392,14 @@ final class DefaultPlatformFunctions {
                                                     null;
                                        });
         coreFunctions.put("str-toinstant",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            String str = context.length == 1? (String) context[0]: null;
                                            return str != null? Instant.parse(str): null;
                                        });
         coreFunctions.put("str-tolocaldatetime",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -1348,7 +1413,8 @@ final class DefaultPlatformFunctions {
                                                     null;
                                        });
         coreFunctions.put("substring",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 3) {
                                                return null;
                                            }
@@ -1388,7 +1454,8 @@ final class DefaultPlatformFunctions {
                                                                   null;
                                        });
         coreFunctions.put("date",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            long epoch = -1;
                                            try {
                                                if (context.length == 1 && context[0] != null) {
@@ -1400,12 +1467,14 @@ final class DefaultPlatformFunctions {
                                            return epoch >= 0? new Date(epoch): new Date();
                                        });
         coreFunctions.put("date-toepoch",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Date date = context.length == 1? (Date) context[0]: null;
                                            return date != null? date.getTime(): null;
                                        });
         coreFunctions.put("date-tostr",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -1419,15 +1488,16 @@ final class DefaultPlatformFunctions {
                                                     null;
                                        });
         coreFunctions.put("epoch",
-                          (context, compilationRuntimeContext) -> System.currentTimeMillis());
+                          (context, expressionRuntimeContext) -> System.currentTimeMillis());
         coreFunctions.put("true",
-                          (context, compilationRuntimeContext) -> true);
+                          (context, expressionRuntimeContext) -> true);
         coreFunctions.put("false",
-                          (context, compilationRuntimeContext) -> false);
+                          (context, expressionRuntimeContext) -> false);
         coreFunctions.put("null",
-                          (context, compilationRuntimeContext) -> null);
+                          (context, expressionRuntimeContext) -> null);
         coreFunctions.put("isnull",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            //this function returns true iff all object values inside the context array are null
                                            boolean isNull = true;
                                            for (Object obj: context) {
@@ -1439,11 +1509,12 @@ final class DefaultPlatformFunctions {
                                            return isNull;
                                        });
         coreFunctions.put("and",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
                                            boolean returnValue = context.length != 0;
                                            for (int i = 0; i < context.length; i++) {
-                                               returnValue &= (context[i] instanceof Boolean && Boolean.valueOf((Boolean) context[i])) ||
-                                                              (context[i] != null && Boolean.valueOf(context[i].toString().toLowerCase()));
+                                               Object contextItemVal = IFunction.val(context[i], expressionRuntimeContext);
+                                               returnValue &= (contextItemVal instanceof Boolean && Boolean.valueOf((Boolean) contextItemVal)) ||
+                                                              (contextItemVal != null && Boolean.valueOf(contextItemVal.toString().toLowerCase()));
                                                if (!returnValue) {
                                                    break;
                                                }
@@ -1451,11 +1522,12 @@ final class DefaultPlatformFunctions {
                                            return returnValue;
                                        });
         coreFunctions.put("or",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
                                            boolean returnValue = false;
                                            for (int i = 0; i < context.length; i++) {
-                                               returnValue |= (context[i] instanceof Boolean && Boolean.valueOf((Boolean) context[i])) ||
-                                                              (context[i] != null && Boolean.valueOf(context[i].toString().toLowerCase()));
+                                               Object contextItemVal = IFunction.val(context[i], expressionRuntimeContext);
+                                               returnValue |= (contextItemVal instanceof Boolean && Boolean.valueOf((Boolean) contextItemVal)) ||
+                                                              (contextItemVal != null && Boolean.valueOf(contextItemVal.toString().toLowerCase()));
                                                if (returnValue) {
                                                    break;
                                                }
@@ -1463,40 +1535,48 @@ final class DefaultPlatformFunctions {
                                            return returnValue;
                                        });
         coreFunctions.put("not",
-                          (context, compilationRuntimeContext) -> context.length == 0 || (context.length == 1 && context[0] == null)?
-                                                                      true:
-                                                                      context[0] instanceof Boolean?
-                                                                          !((Boolean) context[0]):
-                                                                          context[0] instanceof String &&
-                                                                          ("".equals((String) context[0]) ||
-                                                                           "false".equalsIgnoreCase((String) context[0]))?
-                                                                              true:
-                                                                              false);
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
+                                           return context.length == 0 || (context.length == 1 && context[0] == null)?
+                                                      true:
+                                                      context[0] instanceof Boolean?
+                                                          !((Boolean) context[0]):
+                                                          context[0] instanceof String &&
+                                                          ("".equals((String) context[0]) ||
+                                                           "false".equalsIgnoreCase((String) context[0]))?
+                                                              true:
+                                                              false;
+                                       });
         coreFunctions.put("ifelse",  //returns context[1] if condition is satisfied
                                      //else returns context[2] iff context.length == 3 else returns null
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
                                            if (context.length < 2) {
                                                return null;
                                            }
-                                           boolean satisfiesIf = (context[0] instanceof Boolean && Boolean.valueOf((Boolean) context[0])) ||
-                                                                 (context[0] != null && Boolean.valueOf(context[0].toString().toLowerCase()));
-                                           return satisfiesIf? context[1]: (context.length == 3? context[2]: null);
+                                           Object contextItem0 = IFunction.val(context[0], expressionRuntimeContext);
+                                           boolean satisfiesIf = (contextItem0 instanceof Boolean && Boolean.valueOf((Boolean) contextItem0)) ||
+                                                                 (contextItem0 != null && Boolean.valueOf(contextItem0.toString().toLowerCase()));
+                                           return satisfiesIf?
+                                                      IFunction.val(context[1], expressionRuntimeContext):
+                                                      (context.length == 3? IFunction.val(context[2], expressionRuntimeContext): null);
                                        });
         coreFunctions.put("ifelsen",  //returns context[1] if condition is satisfied
                                       //else returns the first non null value from context[n] where n >= 2
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
                                            if (context.length < 2) {
                                                return null;
                                            }
-                                           boolean satisfiesIf = (context[0] instanceof Boolean && Boolean.valueOf((Boolean) context[0])) ||
-                                                                 (context[0] != null && Boolean.valueOf(context[0].toString().toLowerCase()));
+                                           Object contextItem0 = IFunction.val(context[0], expressionRuntimeContext);
+                                           boolean satisfiesIf = (contextItem0 instanceof Boolean && Boolean.valueOf((Boolean) contextItem0)) ||
+                                                                 (contextItem0 != null && Boolean.valueOf(contextItem0.toString().toLowerCase()));
                                            Object returnValue = null;
                                            if (satisfiesIf) {
-                                               returnValue = context[1];
+                                               returnValue = IFunction.val(context[1], expressionRuntimeContext);
                                            } else if (context.length >= 3) {
                                                for (int i = 2; i < context.length; i++) {
-                                                   if (context[i] != null) {
-                                                       returnValue = context[i];
+                                                   Object contextItemVal = IFunction.val(context[i], expressionRuntimeContext);
+                                                   if (contextItemVal != null) {
+                                                       returnValue = contextItemVal;
                                                        break;
                                                    }
                                                }
@@ -1504,11 +1584,15 @@ final class DefaultPlatformFunctions {
                                            return returnValue;
                                        });
         coreFunctions.put("isassignablefrom",
-                          (context, compilationRuntimeContext) -> context.length == 2 &&
-                                                                  context[0] != null && context[1] != null &&
-                                                                  context[0].getClass().isAssignableFrom(context[1].getClass()));
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
+                                           return context.length == 2 &&
+                                                   context[0] != null && context[1] != null &&
+                                                   context[0].getClass().isAssignableFrom(context[1].getClass());
+                                       });
         coreFunctions.put("instanceof",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length != 2) {
                                                return false;
                                            }
@@ -1547,21 +1631,28 @@ final class DefaultPlatformFunctions {
                                            return obj != null && whichClass != null && whichClass.isInstance(obj);
                                        });
         coreFunctions.put("typeof",
-                          (context, compilationRuntimeContext) -> context.length == 1 && context[0] != null?
-                                                                      context[0].getClass().getName():
-                                                                      null);
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
+                                           return context.length == 1 && context[0] != null?
+                                                      context[0].getClass().getName():
+                                                      null;
+                                       });
         coreFunctions.put("tostring",
-                          (context, compilationRuntimeContext) -> context.length == 1 && context[0] != null?
-                                                                      context[0].toString():
-                                                                      null);  //should we instead return an empty string?
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
+                                           return context.length == 1 && context[0] != null?
+                                                      context[0].toString():
+                                                      null;  //should we instead return an empty string?
+                                       });
         coreFunctions.put("equals",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
                                            if (context.length < 2) {
                                                return false;
                                            }
                                            boolean _equals = true;
-                                           Object prevObj = context[0];
+                                           Object prevObj = IFunction.val(context[0], expressionRuntimeContext);
                                            for (Object obj: context) {
+                                               obj = IFunction.val(obj, expressionRuntimeContext);
                                                _equals &= obj != null && obj.equals(prevObj);
                                                if (!_equals) {
                                                    break;
@@ -1570,7 +1661,8 @@ final class DefaultPlatformFunctions {
                                            return _equals;
                                        });
         coreFunctions.put("hashcode",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object obj = context.length == 1? context[0]: null;
                                            return obj != null? obj.hashCode(): null;
                                        });
@@ -1578,7 +1670,8 @@ final class DefaultPlatformFunctions {
                                    //used with reflection as the object remains same.
                                    //This function however can find limited use to abend the flow if the object
                                    //is not of specific type by throwing ClassCastException.
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -1590,7 +1683,8 @@ final class DefaultPlatformFunctions {
                                            return clazz.cast(obj);
                                        });
         coreFunctions.put("toclass",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Object obj = context.length == 1? context[0]: null;
                                            Class clazz = null;
                                            if (obj instanceof Class) {
@@ -1601,7 +1695,8 @@ final class DefaultPlatformFunctions {
                                            return clazz;
                                        });
         coreFunctions.put("toclassarray",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            Class classes[] = new Class[context.length];
                                            for (int i = 0; i < context.length; i++) {
                                                Object obj = context[i];
@@ -1614,7 +1709,8 @@ final class DefaultPlatformFunctions {
                                            return classes;
                                        });
         coreFunctions.put("class",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -1659,7 +1755,8 @@ final class DefaultPlatformFunctions {
                                            return returnClass;
                                        });
         coreFunctions.put("constructor",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 3) {
                                                return null;
                                            }
@@ -1687,7 +1784,8 @@ final class DefaultPlatformFunctions {
                                            return returnObj;
                                        });
         coreFunctions.put("instantiate",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -1715,7 +1813,8 @@ final class DefaultPlatformFunctions {
                                            return returnObj;
                                        });
         coreFunctions.put("ifunc-ref",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -1730,7 +1829,8 @@ final class DefaultPlatformFunctions {
                                            return ifunc;
                                        });
         coreFunctions.put("ifunc-invoke",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0) {
                                                return null;
                                            }
@@ -1742,12 +1842,13 @@ final class DefaultPlatformFunctions {
                                                if (_context.length != 0) {
                                                    System.arraycopy(context, 1, _context, 0, _context.length);
                                                }
-                                               result = func.invoke(_context, compilationRuntimeContext);
+                                               result = func.invoke(_context, expressionRuntimeContext);
                                            }
                                            return result;
                                        });
         coreFunctions.put("ifunc-invoke2",
-                          (context, compilationRuntimeContext) -> {
+                          (context, expressionRuntimeContext) -> {
+                                           context = IFunction.vals(context, expressionRuntimeContext);
                                            if (context.length == 0 || context.length > 2) {
                                                return null;
                                            }
@@ -1758,7 +1859,7 @@ final class DefaultPlatformFunctions {
                                                Object[] _context = context.length == 2?
                                                                        (Object[]) context[1]:  //fn args should be passed as Object[]
                                                                        new Object[0];
-                                               result = func.invoke(_context, compilationRuntimeContext);
+                                               result = func.invoke(_context, expressionRuntimeContext);
                                            }
                                            return result;
                                        });

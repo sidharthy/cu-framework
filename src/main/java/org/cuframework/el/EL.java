@@ -525,15 +525,19 @@ public class EL {
             if (funcId == null) {
                 return null;
             }
+            /* Removing upfront evaluation of parameters as that would cause issues with functions like ifelse where
+             * lazy (and conditional) evaluation of else part should be done when the 'if' check is not satisfied.
             Object[] funcParams = new Object[paramsAsExpressions.size()];
             int index = 0;
             for (Expression expression: paramsAsExpressions) {
                 funcParams[index++] = expression.getValue(erc);
             }
+            */
             String ns = (namespace == null || "".equals(namespace)) && !isRootNamespaceIndicated()? cu.getNamespaceURI(): namespace;
             IFunction func = CompilationUnits.resolveFunction(ns, funcId);
             try {
-                return func == null? null: func.invoke(funcParams, erc.getCompilationRuntimeContext());
+                //return func == null? null: func.invoke(funcParams, erc.getCompilationRuntimeContext());
+                return func == null? null: func.invoke(paramsAsExpressions.toArray(new Expression[0]), erc);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

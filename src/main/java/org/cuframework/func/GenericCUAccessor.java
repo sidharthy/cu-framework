@@ -35,6 +35,7 @@ import org.cuframework.MapOfMaps;
 import org.cuframework.core.CompilationRuntimeContext;
 import org.cuframework.core.CompilationUnits;
 import org.cuframework.core.CompiledTemplatesRegistry;
+import org.cuframework.el.ExpressionRuntimeContext;
 
 /**
  * Generic CU Accessor Function.
@@ -49,12 +50,13 @@ public class GenericCUAccessor implements IFunction {
 
     @Override
     public final Object invoke(Object[] context,
-                               CompilationRuntimeContext compilationRuntimeContext) throws Exception {
-        return _postCU(_cu(context, compilationRuntimeContext), context, compilationRuntimeContext);
+                               ExpressionRuntimeContext expressionRuntimeContext) throws Exception {
+        return _postCU(_cu(context, expressionRuntimeContext), context, expressionRuntimeContext);
     }
 
     protected Object _cu(Object[] context,
-                         CompilationRuntimeContext compilationRuntimeContext) throws Exception {
+                         ExpressionRuntimeContext expressionRuntimeContext) throws Exception {
+        CompilationRuntimeContext compilationRuntimeContext = expressionRuntimeContext.getCompilationRuntimeContext();
         CompilationUnits.ICompilationUnit cu = CompiledTemplatesRegistry.getInstance().
                                                     processExtensions(templateId, compilationRuntimeContext).
                                                                                     //the framework would generically process extensions everytime.
@@ -65,6 +67,8 @@ public class GenericCUAccessor implements IFunction {
         if (cu == null) {
             return null;
         }
+
+        context = IFunction.vals(context, expressionRuntimeContext);
 
         String funcContextContainerMapName = MapOfMaps.Name.CONTEXT_MAP.getKey();
         MapOfMaps mapOfMaps = compilationRuntimeContext.getExternalContext();
@@ -112,7 +116,7 @@ public class GenericCUAccessor implements IFunction {
 
     protected Object _postCU(Object cuResult,
                              Object[] context,
-                             CompilationRuntimeContext compilationRuntimeContext) throws Exception {
+                             ExpressionRuntimeContext expressionRuntimeContext) throws Exception {
         return cuResult;  //by default just return the already calculated result of cu processing
     }
 

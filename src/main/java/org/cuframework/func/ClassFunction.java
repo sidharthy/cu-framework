@@ -34,7 +34,7 @@ import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.cuframework.core.CompilationRuntimeContext;
+import org.cuframework.el.ExpressionRuntimeContext;
 import org.cuframework.util.UtilityFunctions;
 
 /**
@@ -63,9 +63,9 @@ public class ClassFunction extends GenericCUAccessor implements IFunction {
 
     @Override
     protected Object _cu(Object[] context,
-                         CompilationRuntimeContext compilationRuntimeContext) throws Exception {
+                         ExpressionRuntimeContext expressionRuntimeContext) throws Exception {
         if (!cuProcessedOnce) {
-            cuProcessingResult = super._cu(context, compilationRuntimeContext);
+            cuProcessingResult = super._cu(context, expressionRuntimeContext);
             cuProcessedOnce = true;
         }
         return cuProcessingResult;
@@ -74,7 +74,7 @@ public class ClassFunction extends GenericCUAccessor implements IFunction {
     @Override
     protected Object _postCU(Object cuResult,
                              Object[] context,
-                             CompilationRuntimeContext compilationRuntimeContext) throws Exception {
+                             ExpressionRuntimeContext expressionRuntimeContext) throws Exception {
         if (cuResult == null) {
             return null;
         }
@@ -113,6 +113,6 @@ public class ClassFunction extends GenericCUAccessor implements IFunction {
                        ).asSubclass(IFunction.class).newInstance();
             }
         }
-        return func != null? func.invoke(context, compilationRuntimeContext): null;
+        return func != null? func.invoke(context, expressionRuntimeContext): null;
     }
 }
