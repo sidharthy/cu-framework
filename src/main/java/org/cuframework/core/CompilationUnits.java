@@ -2715,6 +2715,24 @@ public final class CompilationUnits {
             }*/
             markExtensionsAsProcessed(canMarkExtensionsAsProcessed);  //Let's mark the actual extensions processed status on
                                                                       //the orig unit from which the extendedUnit was cloned.
+
+            if (canMarkExtensionsAsProcessed) {  //22 Oct, 24: if after processing the extensions, this unit has achieved the finality then let's update the
+                                                 //children of this orig unit to the ones inside the extended unit so its correct structure is available inside
+                                                 //all consuming CUs (whether imported once or multiple times). If this is not done then we will miss the
+                                                 //inherited units in cases where this unit was extended multiple times, by one or more CUs (inside one
+                                                 //or more templates) especially when this unit had achieved finality in the first place.
+                                                 //In such a scenario, the first CU by which this unit gets extended will correctly get the inherited units
+                                                 //because we work on the cloned version of this orig unit inside this method and return the same as extendedUnit
+                                                 //which will have all the inherited units. Also we set the extensions processed flag to true on the orig unit (as
+                                                 //above) before returning from this method and that would mean that any subsequent requests to extend this orig
+                                                 //unit will return immediately without attempting the actual extension. If we don't update the children of this
+                                                 //orig unit with the ones inside extendedUnit then this orig unit will have only its immediate children and no
+                                                 //inherited ones, and other CUs that have extended this orig CU will miss the inherited units resulting in an
+                                                 //incomplete structure.
+                this.children = extendedUnit.children;  //TOOD: better if we create clones of each child and then set here. That would safeguard the orig unit
+                                                        //from any changes done later on the extendedUnit under the assumption that 'since extendedUnit is a
+                                                        //cloned instance so any changes to it won't affect the state of the orig unit'.
+            }
             return extendedUnit;
         }
 
